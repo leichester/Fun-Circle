@@ -1,0 +1,14 @@
+{
+  "title": "Fun Circle",
+  "language": "Langue",
+  "navigation": {
+    "home": "Accueil",
+    "iOffer": "J'OFFRE",
+    "iNeed": "J'AI BESOIN",
+    "sampleEvent": "Événement Exemple"
+  },
+  "content": {
+    "welcome": "Bienvenue à Fun Circle",
+    "description": "Connectez-vous, partagez et découvrez des opportunités dans votre communauté"
+  }
+}
