@@ -218,6 +218,7 @@ const IOffer = () => {
       location: formData.online ? undefined : formData.location,
       city: formData.online ? undefined : formData.city,
       state: formData.online ? undefined : formData.state,
+      type: 'offer',
     });
     
     console.log('Offer added, navigating to home...');

@@ -12,7 +12,6 @@
     "description": "Connectez-vous, partagez et découvrez des opportunités dans votre communauté"
   },
   "offers": {
-    "title": "Offres Récentes",
     "online": "En ligne",
     "new": "Nouveau"
   },
@@ -35,6 +34,31 @@
       "cityPlaceholder": "Entrez la ville",
       "state": "État",
       "statePlaceholder": "Sélectionnez un état",
+      "submit": "Soumettre",
+      "cancel": "Annuler"
+    }
+  },
+  "iNeed": {
+    "title": "Créer une Demande",
+    "subtitle": "Partagez ce dont vous avez besoin de la communauté",
+    "form": {
+      "title": "Titre",
+      "titlePlaceholder": "Entrez ce dont vous avez besoin",
+      "description": "Description",
+      "descriptionPlaceholder": "Décrivez ce dont vous avez besoin en détail",
+      "dateTime": "Date et Heure",
+      "optional": "Optionnel",
+      "price": "Budget",
+      "pricePlaceholder": "Entrez votre budget (ex: 50€ ou Gratuit)",
+      "online": "En ligne",
+      "onlineLabel": "Ceci peut être fait en ligne (virtuel/à distance)",
+      "locationSection": "Préférences de Lieu",
+      "location": "Lieu",
+      "locationPlaceholder": "Entrez le lieu préféré ou l'adresse",
+      "city": "Ville",
+      "cityPlaceholder": "Entrez la ville",
+      "state": "État",
+      "statePlaceholder": "Entrez l'état ou la région",
       "submit": "Soumettre",
       "cancel": "Annuler"
     }

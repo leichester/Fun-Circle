@@ -12,7 +12,6 @@
     "description": "Connect, share, and discover opportunities in your community"
   },
   "offers": {
-    "title": "Recent Offers",
     "online": "Online",
     "new": "New"
   },
@@ -35,6 +34,31 @@
       "cityPlaceholder": "Enter city",
       "state": "State",
       "statePlaceholder": "Select a state",
+      "submit": "Submit",
+      "cancel": "Cancel"
+    }
+  },
+  "iNeed": {
+    "title": "Create a Request",
+    "subtitle": "Share what you need help with from the community",
+    "form": {
+      "title": "Title",
+      "titlePlaceholder": "Enter what you need help with",
+      "description": "Description",
+      "descriptionPlaceholder": "Describe what you need in detail",
+      "dateTime": "Date & Time",
+      "optional": "Optional",
+      "price": "Budget",
+      "pricePlaceholder": "Enter your budget (e.g., $50 or Free)",
+      "online": "Online",
+      "onlineLabel": "This can be done online (virtual/remote)",
+      "locationSection": "Location Preferences",
+      "location": "Location",
+      "locationPlaceholder": "Enter preferred location or address",
+      "city": "City",
+      "cityPlaceholder": "Enter city",
+      "state": "State",
+      "statePlaceholder": "Enter state or region",
       "submit": "Submit",
       "cancel": "Cancel"
     }

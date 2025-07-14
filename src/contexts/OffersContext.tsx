@@ -4,13 +4,14 @@ export interface Offer {
   id: string;
   title: string;
   description: string;
-  dateTime: string;
-  price: string;
+  dateTime?: string; // Made optional
+  price?: string; // Made optional for needs
   online: boolean;
   location?: string;
   city?: string;
   state?: string;
   createdAt: Date;
+  type?: 'offer' | 'need'; // Added type to distinguish between offers and needs
 }
 
 interface OffersContextType {

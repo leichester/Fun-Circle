@@ -12,7 +12,6 @@
     "description": "Conecta, comparte y descubre oportunidades en tu comunidad"
   },
   "offers": {
-    "title": "Ofertas Recientes",
     "online": "En línea",
     "new": "Nuevo"
   },
@@ -35,6 +34,31 @@
       "cityPlaceholder": "Ingresa la ciudad",
       "state": "Estado",
       "statePlaceholder": "Selecciona un estado",
+      "submit": "Enviar",
+      "cancel": "Cancelar"
+    }
+  },
+  "iNeed": {
+    "title": "Crear una Solicitud",
+    "subtitle": "Comparte lo que necesitas de la comunidad",
+    "form": {
+      "title": "Título",
+      "titlePlaceholder": "Ingresa lo que necesitas",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Describe lo que necesitas en detalle",
+      "dateTime": "Fecha y Hora",
+      "optional": "Opcional",
+      "price": "Presupuesto",
+      "pricePlaceholder": "Ingresa tu presupuesto (ej: $50 o Gratis)",
+      "online": "En línea",
+      "onlineLabel": "Esto se puede hacer en línea (virtual/remoto)",
+      "locationSection": "Preferencias de Ubicación",
+      "location": "Ubicación",
+      "locationPlaceholder": "Ingresa ubicación preferida o dirección",
+      "city": "Ciudad",
+      "cityPlaceholder": "Ingresa la ciudad",
+      "state": "Estado",
+      "statePlaceholder": "Ingresa estado o región",
       "submit": "Enviar",
       "cancel": "Cancelar"
     }
