@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useOffers } from '../contexts/OffersContext';
 
 const IOffer = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { addOffer } = useOffers();
   
   const [formData, setFormData] = useState({
     title: '',
@@ -177,6 +179,14 @@ const IOffer = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Submit clicked, form data:', formData);
+    
+    // Check if required fields are filled
+    if (!formData.title || !formData.description || !formData.dateTime || !formData.price) {
+      alert('Please fill in all required fields (Title, Description, Date & Time, Price).');
+      return;
+    }
+    
     // Validate location fields if not online
     if (!formData.online) {
       const locationError = validateLocation(formData.location);
@@ -196,25 +206,25 @@ const IOffer = () => {
       }
     }
     
-    // Here you would typically send the data to your backend
-    console.log('Offer submitted:', formData);
+    console.log('All validations passed, adding offer...');
+    
+    // Add the offer to the global state
+    addOffer({
+      title: formData.title,
+      description: formData.description,
+      dateTime: formData.dateTime,
+      price: formData.price,
+      online: formData.online,
+      location: formData.online ? undefined : formData.location,
+      city: formData.online ? undefined : formData.city,
+      state: formData.online ? undefined : formData.state,
+    });
+    
+    console.log('Offer added, navigating to home...');
+    
+    // Show success message and navigate to home
     alert('Offer submitted successfully!');
-    // Reset form
-    setFormData({
-      title: '',
-      description: '',
-      dateTime: '',
-      price: '',
-      online: false,
-      location: '',
-      city: '',
-      state: ''
-    });
-    setErrors({
-      location: '',
-      city: '',
-      state: ''
-    });
+    navigate('/');
   };
 
   const handleCancel = () => {

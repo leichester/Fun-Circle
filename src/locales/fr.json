@@ -11,6 +11,11 @@
     "welcome": "Bienvenue à Fun Circle",
     "description": "Connectez-vous, partagez et découvrez des opportunités dans votre communauté"
   },
+  "offers": {
+    "title": "Offres Récentes",
+    "online": "En ligne",
+    "new": "Nouveau"
+  },
   "iOffer": {
     "title": "Créer une Offre",
     "subtitle": "Partagez ce que vous pouvez offrir à la communauté",
@@ -30,7 +35,7 @@
       "cityPlaceholder": "Entrez la ville",
       "state": "État",
       "statePlaceholder": "Sélectionnez un état",
-      "submit": "Soumettre l'Offre",
+      "submit": "Soumettre",
       "cancel": "Annuler"
     }
   }
