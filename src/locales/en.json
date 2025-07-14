@@ -5,10 +5,33 @@
     "home": "Home",
     "iOffer": "I OFFER",
     "iNeed": "I NEED",
-    "sampleEvent": "Sample Event"
+    "sampleEvent": "User Registration"
   },
   "content": {
     "welcome": "Welcome to Fun Circle",
     "description": "Connect, share, and discover opportunities in your community"
+  },
+  "iOffer": {
+    "title": "Create an Offer",
+    "subtitle": "Share what you can offer to the community",
+    "form": {
+      "title": "Title",
+      "titlePlaceholder": "Enter the title of your offer",
+      "description": "Description",
+      "descriptionPlaceholder": "Describe what you're offering in detail",
+      "dateTime": "Date and Time",
+      "price": "Price",
+      "pricePlaceholder": "Enter price (e.g., $50 or Free)",
+      "online": "Online",
+      "onlineLabel": "This is an online offer (virtual/remote)",
+      "location": "Location",
+      "locationPlaceholder": "Enter specific location or address",
+      "city": "City",
+      "cityPlaceholder": "Enter city",
+      "state": "State",
+      "statePlaceholder": "Select a state",
+      "submit": "Submit Offer",
+      "cancel": "Cancel"
+    }
   }
 }
