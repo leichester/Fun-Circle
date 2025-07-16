@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import Navigation from '../components/Navigation';
-import { useOffers } from '../contexts/OffersContext';
+import { useOffers } from '../contexts/FirebaseOffersContext';
 
 const Home = () => {
   const { t } = useTranslation();

@@ -1,13 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import { useOffers } from '../contexts/OffersContext';
+import { useOffers } from '../contexts/FirebaseOffersContext';
+import { useAuth } from '../contexts/FirebaseAuthContext';
 
 const IOffer = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { addOffer } = useOffers();
+  const { user, loading } = useAuth();
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/user-registration');
+    }
+  }, [user, loading, navigate]);
   
   const [formData, setFormData] = useState({
     title: '',
