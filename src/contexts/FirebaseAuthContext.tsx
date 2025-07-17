@@ -14,7 +14,7 @@ import { auth } from '../lib/firebase';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, userId?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -50,14 +50,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, userId?: string) => {
     console.log('🔥 Firebase Auth: Creating new user...');
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
       
-      // Update user profile with display name
+      // Update user profile with display name and optional custom userId
+      const displayName = userId ? `${fullName} (@${userId})` : fullName;
       await updateProfile(user, {
-        displayName: fullName
+        displayName: displayName
       });
       
       console.log('✅ Firebase Auth: User created successfully:', user.email);

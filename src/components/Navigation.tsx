@@ -8,7 +8,6 @@ const Navigation = () => {
     { key: 'home', to: '/' },
     { key: 'iOffer', to: '/i-offer' },
     { key: 'iNeed', to: '/i-need' },
-    { key: 'sampleEvent', to: '#user-registration' },
   ];
 
   return (

@@ -217,18 +217,25 @@ const IOffer = () => {
     
     console.log('All validations passed, adding offer...');
     
-    // Add the offer to the global state
-    addOffer({
+    // Prepare offer data - only include location fields if not online
+    const offerData: any = {
       title: formData.title,
       description: formData.description,
       dateTime: formData.dateTime,
       price: formData.price,
       online: formData.online,
-      location: formData.online ? undefined : formData.location,
-      city: formData.online ? undefined : formData.city,
-      state: formData.online ? undefined : formData.state,
       type: 'offer',
-    });
+    };
+
+    // Only add location fields if not online
+    if (!formData.online) {
+      offerData.location = formData.location;
+      offerData.city = formData.city;
+      offerData.state = formData.state;
+    }
+    
+    // Add the offer to the global state
+    addOffer(offerData);
     
     console.log('Offer added, navigating to home...');
     

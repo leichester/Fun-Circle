@@ -51,18 +51,31 @@ const INeed = () => {
     
     console.log('All validations passed, adding need...');
     
-    // Add the need to the global state with a special flag to indicate it's from "I Need"
-    addOffer({
+    // Prepare need data - only include location fields if not online
+    const needData: any = {
       title: formData.title,
       description: formData.description,
-      dateTime: formData.dateTime || undefined,
-      price: formData.price || undefined,
       online: formData.online,
-      location: formData.location || undefined,
-      city: formData.city || undefined,
-      state: formData.state || undefined,
       type: 'need',
-    });
+    };
+
+    // Only add optional fields if they have values
+    if (formData.dateTime) {
+      needData.dateTime = formData.dateTime;
+    }
+    if (formData.price) {
+      needData.price = formData.price;
+    }
+    
+    // Only add location fields if not online and they have values
+    if (!formData.online) {
+      if (formData.location) needData.location = formData.location;
+      if (formData.city) needData.city = formData.city;
+      if (formData.state) needData.state = formData.state;
+    }
+    
+    // Add the need to the global state
+    addOffer(needData);
     
     console.log('Need added, navigating to home...');
     

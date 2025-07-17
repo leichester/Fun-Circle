@@ -7,7 +7,10 @@ import {
   orderBy,
   deleteDoc,
   doc,
-  Timestamp
+  Timestamp,
+  updateDoc,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from './FirebaseAuthContext';
@@ -27,13 +30,16 @@ export interface Offer {
   userId: string;
   userEmail: string;
   userDisplayName?: string;
+  attendees?: string[]; // Array of user IDs who clicked attend
+  attendeeCount?: number; // Count of attendees
 }
 
 interface OffersContextType {
   offers: Offer[];
   loading: boolean;
-  addOffer: (offer: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName'>) => Promise<void>;
+  addOffer: (offer: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName' | 'attendees' | 'attendeeCount'>) => Promise<void>;
   deleteOffer: (id: string) => Promise<void>;
+  toggleAttendance: (offerId: string) => Promise<void>;
 }
 
 const OffersContext = createContext<OffersContextType | undefined>(undefined);
@@ -55,6 +61,10 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
+  // Log when the component re-renders
+  console.log('🔄 OffersProvider: Component re-rendered. User state:', user ? 'logged in' : 'not logged in', 'Offers count:', offers.length);
+
+  // Set up the Firestore listener independently of user state
   useEffect(() => {
     console.log('🔥 Firestore: Setting up real-time listener for posts...');
     
@@ -82,6 +92,8 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
           userId: data.userId,
           userEmail: data.userEmail,
           userDisplayName: data.userDisplayName,
+          attendees: data.attendees || [],
+          attendeeCount: data.attendeeCount || 0,
         });
       });
       
@@ -98,9 +110,9 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
       console.log('🔥 Firestore: Cleaning up real-time listener');
       unsubscribe();
     };
-  }, []);
+  }, []); // Empty dependency array - this should only run once
 
-  const addOffer = async (offerData: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName'>) => {
+  const addOffer = async (offerData: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName' | 'attendees' | 'attendeeCount'>) => {
     if (!user) {
       throw new Error('User must be logged in to create posts');
     }
@@ -114,11 +126,18 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
         userEmail: user.email || '',
         userDisplayName: user.displayName || '',
         createdAt: Timestamp.now(),
+        attendees: [],
+        attendeeCount: 0,
       };
       
-      console.log('🔥 Firestore: Post data to insert:', postData);
+      // Filter out undefined values to prevent Firestore errors
+      const cleanedPostData = Object.fromEntries(
+        Object.entries(postData).filter(([_, value]) => value !== undefined)
+      );
       
-      const docRef = await addDoc(collection(db, 'posts'), postData);
+      console.log('🔥 Firestore: Cleaned post data to insert:', cleanedPostData);
+      
+      const docRef = await addDoc(collection(db, 'posts'), cleanedPostData);
       
       console.log('✅ Firestore: Post added successfully with ID:', docRef.id);
       // Note: No need to manually update state - the real-time listener will handle it!
@@ -141,11 +160,51 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     }
   };
 
+  const toggleAttendance = async (offerId: string) => {
+    if (!user) {
+      throw new Error('User must be logged in to attend');
+    }
+
+    try {
+      console.log('🔥 Firestore: Toggling attendance for post:', offerId);
+      
+      const postRef = doc(db, 'posts', offerId);
+      const currentOffer = offers.find(offer => offer.id === offerId);
+      
+      if (!currentOffer) {
+        throw new Error('Offer not found');
+      }
+
+      const isAttending = currentOffer.attendees?.includes(user.uid) || false;
+      
+      if (isAttending) {
+        // Remove user from attendees
+        await updateDoc(postRef, {
+          attendees: arrayRemove(user.uid),
+          attendeeCount: Math.max(0, (currentOffer.attendeeCount || 0) - 1)
+        });
+        console.log('✅ Firestore: User removed from attendees');
+      } else {
+        // Add user to attendees
+        await updateDoc(postRef, {
+          attendees: arrayUnion(user.uid),
+          attendeeCount: (currentOffer.attendeeCount || 0) + 1
+        });
+        console.log('✅ Firestore: User added to attendees');
+      }
+      
+    } catch (error) {
+      console.error('❌ Firestore: Error toggling attendance:', error);
+      throw error;
+    }
+  };
+
   const value = {
     offers,
     loading,
     addOffer,
     deleteOffer,
+    toggleAttendance,
   };
 
   return (

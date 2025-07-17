@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Posts collection - allow public read, authenticated write
+    match /posts/{postId} {
+      // Anyone can read posts (public access)
+      allow read: if true;
+      
+      // Only authenticated users can create posts
+      allow create: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
+      
+      // Only the post owner can update/delete their posts
+      allow update, delete: if request.auth != null 
+        && request.auth.uid == resource.data.userId;
+    }
+    
+    // Default rule for other collections (if any)
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
