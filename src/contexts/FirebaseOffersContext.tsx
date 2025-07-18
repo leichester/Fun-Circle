@@ -15,6 +15,16 @@ import {
 import { db } from '../lib/firebase';
 import { useAuth } from './FirebaseAuthContext';
 
+export interface Reply {
+  id: string;
+  postId: string;
+  text: string;
+  userId: string;
+  userEmail: string;
+  userDisplayName?: string;
+  createdAt: Date;
+}
+
 export interface Offer {
   id: string;
   title: string;
@@ -32,14 +42,18 @@ export interface Offer {
   userDisplayName?: string;
   attendees?: string[]; // Array of user IDs who clicked attend
   attendeeCount?: number; // Count of attendees
+  replies?: Reply[]; // Array of replies for this post
+  replyCount?: number; // Count of replies
 }
 
 interface OffersContextType {
   offers: Offer[];
   loading: boolean;
-  addOffer: (offer: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName' | 'attendees' | 'attendeeCount'>) => Promise<void>;
+  addOffer: (offer: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName' | 'attendees' | 'attendeeCount' | 'replies' | 'replyCount'>) => Promise<void>;
   deleteOffer: (id: string) => Promise<void>;
   toggleAttendance: (offerId: string) => Promise<void>;
+  addReply: (postId: string, text: string) => Promise<void>;
+  getReplies: (postId: string) => Reply[];
 }
 
 const OffersContext = createContext<OffersContextType | undefined>(undefined);
@@ -58,6 +72,7 @@ interface OffersProviderProps {
 
 export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [replies, setReplies] = useState<Reply[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -111,6 +126,40 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
       unsubscribe();
     };
   }, []); // Empty dependency array - this should only run once
+
+  // Set up replies listener
+  useEffect(() => {
+    console.log('🔥 Firestore: Setting up real-time listener for replies...');
+    
+    const q = query(collection(db, 'replies'), orderBy('createdAt', 'asc'));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const repliesData: Reply[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        repliesData.push({
+          id: doc.id,
+          postId: data.postId,
+          text: data.text,
+          userId: data.userId,
+          userEmail: data.userEmail,
+          userDisplayName: data.userDisplayName,
+          createdAt: data.createdAt.toDate(),
+        });
+      });
+      
+      console.log('🔥 Firestore: Received', repliesData.length, 'replies from real-time listener');
+      setReplies(repliesData);
+    }, (error) => {
+      console.error('❌ Firestore: Error in replies listener:', error);
+    });
+
+    return () => {
+      console.log('🔥 Firestore: Cleaning up replies listener');
+      unsubscribe();
+    };
+  }, []);
 
   const addOffer = async (offerData: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName' | 'attendees' | 'attendeeCount'>) => {
     if (!user) {
@@ -199,12 +248,44 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     }
   };
 
+  const addReply = async (postId: string, text: string) => {
+    if (!user) {
+      throw new Error('User must be authenticated to reply');
+    }
+
+    try {
+      console.log('🔥 Firestore: Adding reply to post:', postId);
+      
+      const replyData = {
+        postId,
+        text: text.trim(),
+        userId: user.uid,
+        userEmail: user.email || '',
+        userDisplayName: user.displayName || user.email || 'Anonymous',
+        createdAt: Timestamp.now(),
+      };
+
+      await addDoc(collection(db, 'replies'), replyData);
+      console.log('✅ Firestore: Reply added successfully');
+      
+    } catch (error) {
+      console.error('❌ Firestore: Error adding reply:', error);
+      throw error;
+    }
+  };
+
+  const getReplies = (postId: string): Reply[] => {
+    return replies.filter(reply => reply.postId === postId);
+  };
+
   const value = {
     offers,
     loading,
     addOffer,
     deleteOffer,
     toggleAttendance,
+    addReply,
+    getReplies,
   };
 
   return (

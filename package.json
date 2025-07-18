@@ -11,6 +11,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@tailwindcss/line-clamp": "^0.4.4",
     "firebase": "^11.10.0",
     "i18next": "^23.7.6",
     "react": "^18.2.0",

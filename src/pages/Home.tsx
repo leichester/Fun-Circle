@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import Navigation from '../components/Navigation';
 import { useOffers } from '../contexts/FirebaseOffersContext';
@@ -7,8 +8,13 @@ import { useAuth } from '../contexts/FirebaseAuthContext';
 
 const Home = () => {
   const { t } = useTranslation();
-  const { offers, loading, toggleAttendance } = useOffers();
+  const navigate = useNavigate();
+  const { offers, loading, toggleAttendance, addReply, getReplies } = useOffers();
   const { user, signOut } = useAuth();
+  
+  // State for reply functionality
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
 
   // Debug logging
   console.log('🏠 Home: Rendering with', offers.length, 'offers, loading:', loading, 'user:', user ? 'logged in' : 'not logged in');
@@ -21,6 +27,35 @@ const Home = () => {
     }
   };
 
+  const handleReplyClick = (offerId: string) => {
+    setReplyingTo(replyingTo === offerId ? null : offerId);
+    setReplyText('');
+  };
+
+  const handleReplySubmit = async (offerId: string) => {
+    if (!replyText.trim()) {
+      alert('Please enter a reply message.');
+      return;
+    }
+    
+    try {
+      await addReply(offerId, replyText);
+      console.log('Reply submitted successfully');
+      
+      // Reset form
+      setReplyingTo(null);
+      setReplyText('');
+    } catch (error) {
+      console.error('Error submitting reply:', error);
+      alert('Error submitting reply. Please try again.');
+    }
+  };
+
+  const handleReplyCancel = () => {
+    setReplyingTo(null);
+    setReplyText('');
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* User Auth & Language Switcher - Top Right */}
@@ -28,7 +63,13 @@ const Home = () => {
         {user ? (
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-600">
-              Welcome, {user.displayName || user.email}
+              Welcome, 
+              <button
+                onClick={() => navigate('/user-profile')}
+                className="text-blue-600 hover:text-blue-800 ml-1 transition-colors font-medium bg-transparent border-none outline-none focus:outline-none p-0 cursor-pointer"
+              >
+                {user.displayName || user.email}
+              </button>
             </span>
             <button
               onClick={handleSignOut}
@@ -83,13 +124,15 @@ const Home = () => {
                 >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                        {offer.type === 'need' ? (
-                          <span className="text-green-600 font-bold">[I NEED]</span>
-                        ) : (
-                          <span className="text-blue-600 font-bold">[I OFFER]</span>
-                        )} {offer.title}
-                      </h3>
+                      <Link to={`/post/${offer.id}`}>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2 hover:text-blue-600 transition-colors cursor-pointer">
+                          {offer.type === 'need' ? (
+                            <span className="text-green-600 font-bold">[I NEED]</span>
+                          ) : (
+                            <span className="text-blue-600 font-bold">[I OFFER]</span>
+                          )} {offer.title}
+                        </h3>
+                      </Link>
                       <p className="text-gray-600 mb-3 line-clamp-2">
                         {offer.description}
                       </p>
@@ -160,7 +203,86 @@ const Home = () => {
                             {offer.attendees?.includes(user?.uid || '') ? 'Attending' : 'Attend'}
                           </button>
                         )}
+                        {/* Show reply button to everyone */}
+                        <button
+                          onClick={() => {
+                            if (!user) {
+                              alert('Please sign in to reply to posts.');
+                              return;
+                            }
+                            handleReplyClick(offer.id);
+                          }}
+                          className={`ml-2 px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
+                            replyingTo === offer.id 
+                              ? 'bg-blue-200 text-blue-700 hover:bg-blue-300' 
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                          </svg>
+                          {replyingTo === offer.id ? 'Close' : `Reply${(() => {
+                            const replyCount = getReplies(offer.id).length;
+                            return replyCount > 0 ? ` (${replyCount})` : '';
+                          })()}`}
+                        </button>
                       </div>
+                      
+                      {/* Reply Form - Show only for the post being replied to */}
+                      {replyingTo === offer.id && user && (
+                        <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                          {/* Show existing replies */}
+                          {(() => {
+                            const postReplies = getReplies(offer.id);
+                            return postReplies.length > 0 && (
+                              <div className="mb-4">
+                                <h4 className="text-sm font-medium text-gray-800 mb-3">
+                                  Replies ({postReplies.length}):
+                                </h4>
+                                <div className="space-y-2 max-h-40 overflow-y-auto">
+                                  {postReplies.map((reply) => (
+                                    <div key={reply.id} className="bg-white p-3 rounded border text-sm">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <span className="font-medium text-gray-700">
+                                          {reply.userDisplayName || reply.userEmail}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {reply.createdAt.toLocaleDateString()} {reply.createdAt.toLocaleTimeString()}
+                                        </span>
+                                      </div>
+                                      <p className="text-gray-600">{reply.text}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* Reply form */}
+                          <h4 className="text-sm font-medium text-gray-800 mb-2">Add a reply:</h4>
+                          <textarea
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Write your reply here..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                            rows={3}
+                          />
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => handleReplySubmit(offer.id)}
+                              className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                              Submit Reply
+                            </button>
+                            <button
+                              onClick={handleReplyCancel}
+                              className="px-3 py-1 text-xs bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="mt-4 md:mt-0 md:ml-6">
                       <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
