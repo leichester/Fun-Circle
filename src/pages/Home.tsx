@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -9,12 +9,72 @@ import { useAuth } from '../contexts/FirebaseAuthContext';
 const Home = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { offers, loading, toggleAttendance, addReply, getReplies } = useOffers();
+  const { offers, loading, toggleAttendance, addReply, replies: allReplies } = useOffers();
   const { user, signOut } = useAuth();
   
   // State for reply functionality
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [nestedReplyingTo, setNestedReplyingTo] = useState<{postId: string, replyId: string, username: string} | null>(null);
+
+  // Helper function to organize replies (same as PostDetail)
+  const organizeReplies = useCallback((replies: any[]): any[] => {
+    type ReplyWithChildren = any & { children: ReplyWithChildren[] };
+    const replyMap = new Map<string, ReplyWithChildren>();
+    const topLevelReplies: ReplyWithChildren[] = [];
+
+    // First pass: create map and add children array
+    replies.forEach(reply => {
+      replyMap.set(reply.id, { ...reply, children: [] });
+    });
+
+    // Second pass: organize into nested structure
+    replies.forEach(reply => {
+      const replyWithChildren = replyMap.get(reply.id)!;
+      
+      if (reply.parentReplyId && replyMap.has(reply.parentReplyId)) {
+        // This is a nested reply
+        const parent = replyMap.get(reply.parentReplyId)!;
+        parent.children.push(replyWithChildren);
+      } else {
+        // This is a top-level reply
+        topLevelReplies.push(replyWithChildren);
+      }
+    });
+
+    // Flatten for display with depth information
+    const flattenReplies = (replies: ReplyWithChildren[]): any[] => {
+      const result: any[] = [];
+      
+      const addReplies = (replyList: ReplyWithChildren[], depth = 0) => {
+        replyList.forEach(reply => {
+          result.push({ ...reply, depth });
+          if (reply.children.length > 0) {
+            addReplies(reply.children, depth + 1);
+          }
+        });
+      };
+      
+      addReplies(replies);
+      return result;
+    };
+
+    return flattenReplies(topLevelReplies);
+  }, []);
+
+  // Get organized replies for a specific post
+  const getPostReplies = useCallback((postId: string) => {
+    const postReplies = allReplies.filter(reply => reply.postId === postId);
+    
+    // Sort by creation date
+    postReplies.sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+      const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    return organizeReplies(postReplies);
+  }, [allReplies, organizeReplies]);
 
   // Debug logging
   console.log('🏠 Home: Rendering with', offers.length, 'offers, loading:', loading, 'user:', user ? 'logged in' : 'not logged in');
@@ -30,6 +90,7 @@ const Home = () => {
   const handleReplyClick = (offerId: string) => {
     setReplyingTo(replyingTo === offerId ? null : offerId);
     setReplyText('');
+    setNestedReplyingTo(null); // Reset nested reply state
   };
 
   const handleReplySubmit = async (offerId: string) => {
@@ -39,12 +100,15 @@ const Home = () => {
     }
     
     try {
-      await addReply(offerId, replyText);
+      // Check if this is a nested reply
+      const parentReplyId = nestedReplyingTo?.replyId || undefined;
+      await addReply(offerId, replyText, parentReplyId);
       console.log('Reply submitted successfully');
       
       // Reset form
       setReplyingTo(null);
       setReplyText('');
+      setNestedReplyingTo(null);
     } catch (error) {
       console.error('Error submitting reply:', error);
       alert('Error submitting reply. Please try again.');
@@ -54,6 +118,7 @@ const Home = () => {
   const handleReplyCancel = () => {
     setReplyingTo(null);
     setReplyText('');
+    setNestedReplyingTo(null);
   };
 
   return (
@@ -150,7 +215,7 @@ const Home = () => {
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            {new Date(offer.dateTime).toLocaleDateString()} {new Date(offer.dateTime).toLocaleTimeString()}
+                            {new Date(offer.dateTime).toLocaleDateString()} {new Date(offer.dateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </span>
                         )}
                         {offer.price && (
@@ -222,35 +287,107 @@ const Home = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                           </svg>
                           {replyingTo === offer.id ? 'Close' : `Reply${(() => {
-                            const replyCount = getReplies(offer.id).length;
+                            const replyCount = getPostReplies(offer.id).length;
                             return replyCount > 0 ? ` (${replyCount})` : '';
                           })()}`}
                         </button>
                       </div>
                       
-                      {/* Reply Form - Show only for the post being replied to */}
+                      {/* Reply Form and Replies Display - Show only for the post being replied to */}
                       {replyingTo === offer.id && user && (
                         <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                          {/* Show existing replies */}
+                          {/* Show existing replies with nested structure */}
                           {(() => {
-                            const postReplies = getReplies(offer.id);
+                            const postReplies = getPostReplies(offer.id);
                             return postReplies.length > 0 && (
                               <div className="mb-4">
                                 <h4 className="text-sm font-medium text-gray-800 mb-3">
                                   Replies ({postReplies.length}):
                                 </h4>
-                                <div className="space-y-2 max-h-40 overflow-y-auto">
-                                  {postReplies.map((reply) => (
-                                    <div key={reply.id} className="bg-white p-3 rounded border text-sm">
-                                      <div className="flex items-center justify-between mb-1">
-                                        <span className="font-medium text-gray-700">
-                                          {reply.userDisplayName || reply.userEmail}
-                                        </span>
-                                        <span className="text-xs text-gray-500">
-                                          {reply.createdAt.toLocaleDateString()} {reply.createdAt.toLocaleTimeString()}
-                                        </span>
+                                <div className="space-y-3 max-h-60 overflow-y-auto">
+                                  {postReplies.map((reply: any) => (
+                                    <div 
+                                      key={reply.id} 
+                                      className={`bg-white p-3 rounded border text-sm ${
+                                        reply.depth > 0 ? 'border-l-4 border-l-blue-300' : ''
+                                      }`}
+                                      style={reply.depth > 0 ? { marginLeft: `${Math.min(reply.depth * 20, 60)}px` } : {}}
+                                    >
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-medium text-gray-700">
+                                            {reply.userDisplayName || reply.userEmail}
+                                          </span>
+                                          {reply.depth > 0 && reply.parentReplyId && (
+                                            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                                              reply
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs text-gray-500">
+                                            {(() => {
+                                              const date = reply.createdAt.toDate ? reply.createdAt.toDate() : new Date(reply.createdAt);
+                                              return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                                            })()}
+                                          </span>
+                                          {user && (
+                                            <button
+                                              onClick={() => {
+                                                if (nestedReplyingTo?.replyId === reply.id) {
+                                                  setNestedReplyingTo(null);
+                                                  setReplyText('');
+                                                } else {
+                                                  setNestedReplyingTo({
+                                                    postId: offer.id,
+                                                    replyId: reply.id,
+                                                    username: reply.userDisplayName || reply.userEmail
+                                                  });
+                                                  setReplyText(`@${reply.userDisplayName || reply.userEmail} `);
+                                                }
+                                              }}
+                                              className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                                            >
+                                              {nestedReplyingTo?.replyId === reply.id ? 'Cancel' : 'Reply'}
+                                            </button>
+                                          )}
+                                        </div>
                                       </div>
-                                      <p className="text-gray-600">{reply.text}</p>
+                                      <p className="text-gray-600 mb-2">{reply.text}</p>
+                                      
+                                      {/* Inline nested reply form */}
+                                      {user && nestedReplyingTo?.replyId === reply.id && (
+                                        <div className="mt-3 p-3 bg-blue-50 rounded border-l-4 border-blue-300">
+                                          <h5 className="text-xs font-medium text-gray-700 mb-2">
+                                            Replying to {nestedReplyingTo?.username}
+                                          </h5>
+                                          <textarea
+                                            value={replyText}
+                                            onChange={(e) => setReplyText(e.target.value)}
+                                            placeholder={`Reply to ${nestedReplyingTo?.username}...`}
+                                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent resize-none"
+                                            rows={2}
+                                            autoFocus
+                                          />
+                                          <div className="flex gap-2 mt-2">
+                                            <button
+                                              onClick={() => handleReplySubmit(offer.id)}
+                                              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                            >
+                                              Submit
+                                            </button>
+                                            <button
+                                              onClick={() => {
+                                                setNestedReplyingTo(null);
+                                                setReplyText('');
+                                              }}
+                                              className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -258,29 +395,33 @@ const Home = () => {
                             );
                           })()}
                           
-                          {/* Reply form */}
-                          <h4 className="text-sm font-medium text-gray-800 mb-2">Add a reply:</h4>
-                          <textarea
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            placeholder="Write your reply here..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                            rows={3}
-                          />
-                          <div className="flex gap-2 mt-3">
-                            <button
-                              onClick={() => handleReplySubmit(offer.id)}
-                              className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                            >
-                              Submit Reply
-                            </button>
-                            <button
-                              onClick={handleReplyCancel}
-                              className="px-3 py-1 text-xs bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
+                          {/* Main reply form - Only show if not replying to a specific reply */}
+                          {!nestedReplyingTo && (
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-800 mb-2">Add a reply:</h4>
+                              <textarea
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                placeholder="Write your reply here..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                rows={3}
+                              />
+                              <div className="flex gap-2 mt-3">
+                                <button
+                                  onClick={() => handleReplySubmit(offer.id)}
+                                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                >
+                                  Submit Reply
+                                </button>
+                                <button
+                                  onClick={handleReplyCancel}
+                                  className="px-3 py-1 text-xs bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

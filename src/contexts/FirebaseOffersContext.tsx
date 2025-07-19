@@ -23,6 +23,8 @@ export interface Reply {
   userEmail: string;
   userDisplayName?: string;
   createdAt: Date;
+  parentReplyId?: string; // For nested replies
+  depth?: number; // Track nesting level
 }
 
 export interface Offer {
@@ -49,11 +51,12 @@ export interface Offer {
 interface OffersContextType {
   offers: Offer[];
   loading: boolean;
-  addOffer: (offer: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName' | 'attendees' | 'attendeeCount' | 'replies' | 'replyCount'>) => Promise<void>;
+  addOffer: (offer: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName'>) => Promise<void>;
   deleteOffer: (id: string) => Promise<void>;
   toggleAttendance: (offerId: string) => Promise<void>;
-  addReply: (postId: string, text: string) => Promise<void>;
-  getReplies: (postId: string) => Reply[];
+  addReply: (postId: string, text: string, parentReplyId?: string) => Promise<void>;
+  getReplies: (postId: string) => Promise<Reply[]>;
+  replies: Reply[]; // Add replies state for real-time access
 }
 
 const OffersContext = createContext<OffersContextType | undefined>(undefined);
@@ -146,6 +149,8 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
           userEmail: data.userEmail,
           userDisplayName: data.userDisplayName,
           createdAt: data.createdAt.toDate(),
+          parentReplyId: data.parentReplyId || undefined,
+          depth: 0, // Will be calculated in organizeReplies
         });
       });
       
@@ -248,13 +253,13 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     }
   };
 
-  const addReply = async (postId: string, text: string) => {
+  const addReply = async (postId: string, text: string, parentReplyId?: string) => {
     if (!user) {
       throw new Error('User must be authenticated to reply');
     }
 
     try {
-      console.log('🔥 Firestore: Adding reply to post:', postId);
+      console.log('🔥 Firestore: Adding reply to post:', postId, parentReplyId ? `(nested under ${parentReplyId})` : '(top-level)');
       
       const replyData = {
         postId,
@@ -263,6 +268,7 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
         userEmail: user.email || '',
         userDisplayName: user.displayName || user.email || 'Anonymous',
         createdAt: Timestamp.now(),
+        ...(parentReplyId && { parentReplyId }), // Add parentReplyId only if provided
       };
 
       await addDoc(collection(db, 'replies'), replyData);
@@ -274,8 +280,64 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     }
   };
 
-  const getReplies = (postId: string): Reply[] => {
-    return replies.filter(reply => reply.postId === postId);
+  const getReplies = async (postId: string): Promise<Reply[]> => {
+    // Filter replies for this post
+    const postReplies = replies.filter(reply => reply.postId === postId);
+    
+    // Sort by creation date
+    postReplies.sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt : (a.createdAt as any).toDate();
+      const dateB = b.createdAt instanceof Date ? b.createdAt : (b.createdAt as any).toDate();
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    // Organize replies into nested structure
+    return organizeReplies(postReplies);
+  };
+
+  // Helper function to organize replies into a nested structure
+  const organizeReplies = (replies: Reply[]): Reply[] => {
+    type ReplyWithChildren = Reply & { children: ReplyWithChildren[] };
+    const replyMap = new Map<string, ReplyWithChildren>();
+    const topLevelReplies: ReplyWithChildren[] = [];
+
+    // First pass: create map and add children array
+    replies.forEach(reply => {
+      replyMap.set(reply.id, { ...reply, children: [] });
+    });
+
+    // Second pass: organize into nested structure
+    replies.forEach(reply => {
+      const replyWithChildren = replyMap.get(reply.id)!;
+      
+      if (reply.parentReplyId && replyMap.has(reply.parentReplyId)) {
+        // This is a nested reply
+        const parent = replyMap.get(reply.parentReplyId)!;
+        parent.children.push(replyWithChildren);
+      } else {
+        // This is a top-level reply
+        topLevelReplies.push(replyWithChildren);
+      }
+    });
+
+    // Flatten for display with depth information
+    const flattenReplies = (replies: ReplyWithChildren[]): Reply[] => {
+      const result: Reply[] = [];
+      
+      const addReplies = (replyList: ReplyWithChildren[], depth = 0) => {
+        replyList.forEach(reply => {
+          result.push({ ...reply, depth });
+          if (reply.children.length > 0) {
+            addReplies(reply.children, depth + 1);
+          }
+        });
+      };
+      
+      addReplies(replies);
+      return result;
+    };
+
+    return flattenReplies(topLevelReplies);
   };
 
   const value = {
@@ -286,6 +348,7 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     toggleAttendance,
     addReply,
     getReplies,
+    replies, // Add replies state for real-time access
   };
 
   return (

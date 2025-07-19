@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
@@ -7,31 +7,78 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 const PostDetail = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { offers, loading, toggleAttendance, addReply, getReplies } = useOffers();
+  const { offers, loading, toggleAttendance, addReply, replies: allReplies } = useOffers();
   const { user } = useAuth();
   
   const [replyText, setReplyText] = useState('');
   const [showReplyForm, setShowReplyForm] = useState(false);
-  const [replies, setReplies] = useState<any[]>([]);
+  const [replyingTo, setReplyingTo] = useState<{id: string, username: string} | null>(null);
 
   // Find the specific post
   const post = offers.find(offer => offer.id === postId);
 
-  // Load replies for this post
-  useEffect(() => {
-    const loadReplies = async () => {
-      if (postId) {
-        try {
-          const postReplies = await getReplies(postId);
-          setReplies(postReplies);
-        } catch (error) {
-          console.error('Error loading replies:', error);
-        }
+  // Helper function to organize replies (moved from context for direct use)
+  const organizeReplies = useCallback((replies: any[]): any[] => {
+    type ReplyWithChildren = any & { children: ReplyWithChildren[] };
+    const replyMap = new Map<string, ReplyWithChildren>();
+    const topLevelReplies: ReplyWithChildren[] = [];
+
+    // First pass: create map and add children array
+    replies.forEach(reply => {
+      replyMap.set(reply.id, { ...reply, children: [] });
+    });
+
+    // Second pass: organize into nested structure
+    replies.forEach(reply => {
+      const replyWithChildren = replyMap.get(reply.id)!;
+      
+      if (reply.parentReplyId && replyMap.has(reply.parentReplyId)) {
+        // This is a nested reply
+        const parent = replyMap.get(reply.parentReplyId)!;
+        parent.children.push(replyWithChildren);
+      } else {
+        // This is a top-level reply
+        topLevelReplies.push(replyWithChildren);
       }
+    });
+
+    // Flatten for display with depth information
+    const flattenReplies = (replies: ReplyWithChildren[]): any[] => {
+      const result: any[] = [];
+      
+      const addReplies = (replyList: ReplyWithChildren[], depth = 0) => {
+        replyList.forEach(reply => {
+          result.push({ ...reply, depth });
+          if (reply.children.length > 0) {
+            addReplies(reply.children, depth + 1);
+          }
+        });
+      };
+      
+      addReplies(replies);
+      return result;
     };
 
-    loadReplies();
-  }, [postId, getReplies]);
+    return flattenReplies(topLevelReplies);
+  }, []);
+
+  // Get replies for this post from the real-time context and organize them
+  const replies = useMemo(() => {
+    if (!postId) return [];
+    
+    // Filter replies for this post
+    const postReplies = allReplies.filter(reply => reply.postId === postId);
+    
+    // Sort by creation date
+    postReplies.sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+      const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    // Organize into nested structure with depth
+    return organizeReplies(postReplies);
+  }, [postId, allReplies, organizeReplies]);
 
   const handleReplySubmit = async () => {
     if (!replyText.trim()) {
@@ -45,16 +92,16 @@ const PostDetail = () => {
     }
     
     try {
-      await addReply(postId!, replyText);
+      // Use the replyingTo state to determine if this is a nested reply
+      const parentReplyId = replyingTo?.id || undefined;
+      await addReply(postId!, replyText, parentReplyId);
       console.log('Reply submitted successfully');
       
-      // Reset form and reload replies
+      // Reset form - no need to manually reload replies since real-time listener will handle it
       setReplyText('');
       setShowReplyForm(false);
+      setReplyingTo(null);
       
-      // Reload replies
-      const updatedReplies = await getReplies(postId!);
-      setReplies(updatedReplies);
     } catch (error) {
       console.error('Error submitting reply:', error);
       alert('Error submitting reply. Please try again.');
@@ -64,12 +111,13 @@ const PostDetail = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-gray-600">Loading post...</div>
       </div>
     );
   }
 
-  if (!post) {
+  // If offers are loaded but post is not found
+  if (!loading && offers.length > 0 && !post) {
     return (
       <div className="min-h-screen bg-white">
         <div className="container mx-auto px-4 py-8">
@@ -84,6 +132,15 @@ const PostDetail = () => {
             </Link>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // If still loading offers or post not found yet, show loading
+  if (!post) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-gray-600">Loading post...</div>
       </div>
     );
   }
@@ -157,7 +214,7 @@ const PostDetail = () => {
                       <br />
                       <span>{new Date(post.dateTime).toLocaleDateString()}</span>
                       <br />
-                      <span>{new Date(post.dateTime).toLocaleTimeString()}</span>
+                      <span>{new Date(post.dateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                     </div>
                   </div>
                 )}
@@ -243,32 +300,34 @@ const PostDetail = () => {
                     alert('Please sign in to reply to posts.');
                     return;
                   }
+                  setReplyingTo(null); // Reset replying to for main reply
+                  setReplyText(''); // Reset reply text
                   setShowReplyForm(!showReplyForm);
                 }}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                className="px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                 </svg>
-                Reply
+                {showReplyForm && !replyingTo ? 'Cancel Reply' : 'Reply'}
               </button>
             </div>
 
-            {/* Reply Form */}
-            {showReplyForm && user && (
-              <div className="mb-8 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-gray-800 mb-3">Add a Reply</h4>
+            {/* Main Reply Form - Only show for top-level replies */}
+            {showReplyForm && user && !replyingTo && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <h4 className="text-sm font-medium text-gray-800 mb-2">Add a reply:</h4>
                 <textarea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Write your reply..."
-                  rows={3}
+                  placeholder="Write your reply here..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows={3}
                 />
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={handleReplySubmit}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                   >
                     Submit Reply
                   </button>
@@ -276,8 +335,9 @@ const PostDetail = () => {
                     onClick={() => {
                       setShowReplyForm(false);
                       setReplyText('');
+                      setReplyingTo(null);
                     }}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                    className="px-3 py-1 text-xs bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
                   >
                     Cancel
                   </button>
@@ -286,33 +346,110 @@ const PostDetail = () => {
             )}
 
             {/* Replies Section */}
-            {replies.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  Replies ({replies.length})
-                </h3>
-                <div className="space-y-4">
-                  {replies.map((reply) => (
-                    <div key={reply.id} className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        <span className="font-medium text-gray-800">
-                          {reply.userDisplayName || reply.userEmail}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {reply.createdAt && new Date(reply.createdAt.toDate()).toLocaleDateString()}
-                        </span>
+            <div className="mt-8">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                Replies ({replies.length})
+              </h3>
+              
+              {replies.length > 0 ? (
+                <div className="space-y-3">
+                  {replies.map((reply: any) => (
+                    <div 
+                      key={reply.id} 
+                      className={`bg-white p-3 rounded border text-sm ${
+                        reply.depth > 0 ? 'border-l-4 border-l-blue-300' : ''
+                      }`}
+                      style={reply.depth > 0 ? { marginLeft: `${Math.min(reply.depth * 20, 60)}px` } : {}}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-700">
+                            {reply.userDisplayName || reply.userEmail}
+                          </span>
+                          {reply.depth > 0 && reply.parentReplyId && (
+                            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                              reply
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">
+                            {reply.createdAt && (() => {
+                              // Handle both Firestore Timestamp and Date objects
+                              const date = reply.createdAt.toDate ? reply.createdAt.toDate() : new Date(reply.createdAt);
+                              return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                            })()}
+                          </span>
+                          {user && (
+                            <button
+                              onClick={() => {
+                                if (replyingTo?.id === reply.id) {
+                                  setReplyingTo(null);
+                                  setReplyText('');
+                                } else {
+                                  setReplyingTo({
+                                    id: reply.id,
+                                    username: reply.userDisplayName || reply.userEmail
+                                  });
+                                  setReplyText(`@${reply.userDisplayName || reply.userEmail} `);
+                                }
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                            >
+                              {replyingTo?.id === reply.id ? 'Cancel' : 'Reply'}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-gray-700 whitespace-pre-wrap">
-                        {reply.content}
-                      </p>
+                      <p className="text-gray-600 mb-2">{reply.text}</p>
+                      
+                      {/* Inline nested reply form */}
+                      {user && replyingTo?.id === reply.id && (
+                        <div className="mt-3 p-3 bg-blue-50 rounded border-l-4 border-blue-300">
+                          <h5 className="text-xs font-medium text-gray-700 mb-2">
+                            Replying to {replyingTo?.username}
+                          </h5>
+                          <textarea
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder={`Reply to ${replyingTo?.username}...`}
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent resize-none"
+                            rows={2}
+                            autoFocus
+                          />
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={handleReplySubmit}
+                              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                            >
+                              Submit
+                            </button>
+                            <button
+                              onClick={() => {
+                                setReplyingTo(null);
+                                setReplyText('');
+                              }}
+                              className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-gray-400 mb-2">
+                    <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500">No replies yet. Be the first to comment!</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
