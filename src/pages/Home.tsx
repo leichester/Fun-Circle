@@ -17,6 +17,45 @@ const Home = () => {
   const [replyText, setReplyText] = useState('');
   const [nestedReplyingTo, setNestedReplyingTo] = useState<{postId: string, replyId: string, username: string} | null>(null);
 
+  // Function to determine post status
+  const getPostStatus = (post: any) => {
+    if (!post.dateTime) {
+      return { text: 'Active', color: 'bg-green-100 text-green-800' };
+    }
+
+    const postDateTime = new Date(post.dateTime);
+    const now = new Date();
+    
+    // 1. If the start date and time is filled with a future date and time, make it "Soon".
+    if (postDateTime > now) {
+      return { text: 'Soon', color: 'bg-yellow-100 text-yellow-800' };
+    }
+    
+    // Start date is current or past, check end date scenarios
+    if (post.endDateTime) {
+      const endDateTime = new Date(post.endDateTime);
+      
+      // 4. If the start date and time is filled with a past date and time, and the end date and time is in the past, make it "Expired"
+      if (endDateTime < now) {
+        return { text: 'Expired', color: 'bg-gray-100 text-gray-600' };
+      }
+      
+      // 3. If the start date and time is filled with a current or past date and time, and end date and time is in the future, make it "Active".
+      return { text: 'Active', color: 'bg-green-100 text-green-800' };
+    } else {
+      // No end date specified - check if it's been more than one month since start date
+      const oneMonthAfterStart = new Date(postDateTime);
+      oneMonthAfterStart.setMonth(oneMonthAfterStart.getMonth() + 1);
+      
+      if (now > oneMonthAfterStart) {
+        return { text: 'Expired', color: 'bg-gray-100 text-gray-600' };
+      }
+      
+      // 2. If the start date and time is filled with a current or past date and time, but no end date and time, make it "Active".
+      return { text: 'Active', color: 'bg-green-100 text-green-800' };
+    }
+  };
+
   // Helper function to organize replies (same as PostDetail)
   const organizeReplies = useCallback((replies: any[]): any[] => {
     type ReplyWithChildren = any & { children: ReplyWithChildren[] };
@@ -182,7 +221,9 @@ const Home = () => {
             </div>
           ) : offers.length > 0 ? (
             <div className="space-y-4">
-              {offers.map((offer) => (
+              {offers.map((offer) => {
+                const postStatus = getPostStatus(offer);
+                return (
                 <div
                   key={offer.id}
                   className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
@@ -426,13 +467,14 @@ const Home = () => {
                       )}
                     </div>
                     <div className="mt-4 md:mt-0 md:ml-6">
-                      <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                        New
+                      <span className={`inline-block text-xs px-2 py-1 rounded-full ${postStatus.color}`}>
+                        {postStatus.text}
                       </span>
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12">

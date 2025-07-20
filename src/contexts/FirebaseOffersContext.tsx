@@ -7,8 +7,8 @@ import {
   orderBy,
   deleteDoc,
   doc,
-  Timestamp,
   updateDoc,
+  Timestamp,
   arrayUnion,
   arrayRemove
 } from 'firebase/firestore';
@@ -32,6 +32,7 @@ export interface Offer {
   title: string;
   description: string;
   dateTime?: string;
+  endDateTime?: string;
   price?: string;
   online: boolean;
   location?: string;
@@ -52,6 +53,7 @@ interface OffersContextType {
   offers: Offer[];
   loading: boolean;
   addOffer: (offer: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName'>) => Promise<void>;
+  updateOffer: (id: string, offer: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName'>) => Promise<void>;
   deleteOffer: (id: string) => Promise<void>;
   toggleAttendance: (offerId: string) => Promise<void>;
   addReply: (postId: string, text: string, parentReplyId?: string) => Promise<void>;
@@ -202,6 +204,32 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     }
   };
 
+  const updateOffer = async (id: string, offerData: Omit<Offer, 'id' | 'createdAt' | 'userId' | 'userEmail' | 'userDisplayName'>) => {
+    if (!user) {
+      throw new Error('User must be logged in to update posts');
+    }
+
+    try {
+      console.log('🔥 Firestore: Updating post with ID:', id, offerData);
+      
+      // Filter out undefined values to prevent Firestore errors
+      const cleanedUpdateData = Object.fromEntries(
+        Object.entries(offerData).filter(([_, value]) => value !== undefined)
+      );
+      
+      console.log('🔥 Firestore: Cleaned update data:', cleanedUpdateData);
+      
+      await updateDoc(doc(db, 'posts', id), cleanedUpdateData);
+      
+      console.log('✅ Firestore: Post updated successfully');
+      // Note: No need to manually update state - the real-time listener will handle it!
+      
+    } catch (error) {
+      console.error('❌ Firestore: Error updating post:', error);
+      throw error;
+    }
+  };
+
   const deleteOffer = async (id: string) => {
     try {
       console.log('🔥 Firestore: Deleting post with ID:', id);
@@ -344,6 +372,7 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     offers,
     loading,
     addOffer,
+    updateOffer,
     deleteOffer,
     toggleAttendance,
     addReply,

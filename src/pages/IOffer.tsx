@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
@@ -8,8 +8,13 @@ import { useAuth } from '../contexts/FirebaseAuthContext';
 const IOffer = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { addOffer } = useOffers();
+  const [searchParams] = useSearchParams();
+  const { addOffer, offers, updateOffer } = useOffers();
   const { user, loading } = useAuth();
+  
+  const editId = searchParams.get('edit');
+  const isEditing = !!editId;
+  const postToEdit = isEditing ? offers.find(offer => offer.id === editId) : null;
   
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -17,11 +22,36 @@ const IOffer = () => {
       navigate('/user-registration');
     }
   }, [user, loading, navigate]);
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (isEditing && postToEdit) {
+      // Check if user owns the post
+      if (postToEdit.userId !== user?.uid) {
+        alert('You can only edit your own posts.');
+        navigate('/');
+        return;
+      }
+
+      setFormData({
+        title: postToEdit.title || '',
+        description: postToEdit.description || '',
+        dateTime: postToEdit.dateTime || '',
+        endDateTime: postToEdit.endDateTime || '',
+        price: postToEdit.price || '',
+        online: postToEdit.online || false,
+        location: postToEdit.location || '',
+        city: postToEdit.city || '',
+        state: postToEdit.state || ''
+      });
+    }
+  }, [isEditing, postToEdit, user, navigate]);
   
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     dateTime: '',
+    endDateTime: '',
     price: '',
     online: false,
     location: '',
@@ -185,6 +215,17 @@ const IOffer = () => {
     }
   };
 
+  // Get current date and time in the format required by datetime-local input
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -215,33 +256,34 @@ const IOffer = () => {
       }
     }
     
-    console.log('All validations passed, adding offer...');
+    console.log('All validations passed, processing offer...');
     
-    // Prepare offer data - only include location fields if not online
-    const offerData: any = {
+    const offerData = {
       title: formData.title,
       description: formData.description,
       dateTime: formData.dateTime,
+      endDateTime: formData.endDateTime || undefined,
       price: formData.price,
       online: formData.online,
-      type: 'offer',
+      location: formData.online ? undefined : formData.location,
+      city: formData.online ? undefined : formData.city,
+      state: formData.online ? undefined : formData.state,
+      type: 'offer' as const,
     };
 
-    // Only add location fields if not online
-    if (!formData.online) {
-      offerData.location = formData.location;
-      offerData.city = formData.city;
-      offerData.state = formData.state;
+    if (isEditing && editId) {
+      // Update existing offer
+      updateOffer(editId, offerData);
+      console.log('Offer updated, navigating to post detail...');
+      alert('Offer updated successfully!');
+      navigate(`/post/${editId}`);
+    } else {
+      // Add new offer
+      addOffer(offerData);
+      console.log('Offer added, navigating to home...');
+      alert('Offer submitted successfully!');
+      navigate('/');
     }
-    
-    // Add the offer to the global state
-    addOffer(offerData);
-    
-    console.log('Offer added, navigating to home...');
-    
-    // Show success message and navigate to home
-    alert('Offer submitted successfully!');
-    navigate('/');
   };
 
   const handleCancel = () => {
@@ -255,8 +297,12 @@ const IOffer = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">{t('iOffer.title')}</h1>
-            <p className="text-gray-600 mt-2">{t('iOffer.subtitle')}</p>
+            <h1 className="text-3xl font-bold text-gray-800">
+              {isEditing ? 'Edit Offer' : t('iOffer.title')}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {isEditing ? 'Update your offer details' : t('iOffer.subtitle')}
+            </p>
           </div>
           <LanguageSwitcher />
         </div>
@@ -298,17 +344,34 @@ const IOffer = () => {
               />
             </div>
 
-            {/* Date and Time */}
+            {/* Start Date and Time */}
             <div>
               <label htmlFor="dateTime" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('iOffer.form.dateTime')} *
+                Start Date and Time *
               </label>
               <input
                 type="datetime-local"
                 id="dateTime"
                 name="dateTime"
                 required
+                min={getCurrentDateTime()}
                 value={formData.dateTime}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* End Date and Time - Optional */}
+            <div>
+              <label htmlFor="endDateTime" className="block text-sm font-medium text-gray-700 mb-2">
+                End Date and Time (Optional)
+              </label>
+              <input
+                type="datetime-local"
+                id="endDateTime"
+                name="endDateTime"
+                min={formData.dateTime || getCurrentDateTime()}
+                value={formData.endDateTime}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -431,7 +494,7 @@ const IOffer = () => {
                 type="submit"
                 className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
               >
-                {t('iOffer.form.submit')}
+                {isEditing ? 'Update Offer' : t('iOffer.form.submit')}
               </button>
               <button
                 type="button"

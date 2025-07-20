@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
@@ -8,8 +8,24 @@ import { useAuth } from '../contexts/FirebaseAuthContext';
 const INeed = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { addOffer } = useOffers();
+  const [searchParams] = useSearchParams();
+  const { addOffer, offers, updateOffer } = useOffers();
   const { user, loading } = useAuth();
+  
+  const editId = searchParams.get('edit');
+  const isEditing = !!editId;
+  const postToEdit = isEditing ? offers.find(offer => offer.id === editId) : null;
+  
+  // Function to get current date and time in the format required by datetime-local input
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
   
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -17,11 +33,36 @@ const INeed = () => {
       navigate('/user-registration');
     }
   }, [user, loading, navigate]);
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (isEditing && postToEdit) {
+      // Check if user owns the post
+      if (postToEdit.userId !== user?.uid) {
+        alert('You can only edit your own posts.');
+        navigate('/');
+        return;
+      }
+
+      setFormData({
+        title: postToEdit.title || '',
+        description: postToEdit.description || '',
+        dateTime: postToEdit.dateTime || '',
+        endDateTime: postToEdit.endDateTime || '',
+        price: postToEdit.price || '',
+        online: postToEdit.online || false,
+        location: postToEdit.location || '',
+        city: postToEdit.city || '',
+        state: postToEdit.state || ''
+      });
+    }
+  }, [isEditing, postToEdit, user, navigate]);
   
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     dateTime: '',
+    endDateTime: '',
     price: '',
     online: false,
     location: '',
@@ -49,19 +90,22 @@ const INeed = () => {
       return;
     }
     
-    console.log('All validations passed, adding need...');
+    console.log('All validations passed, processing need...');
     
     // Prepare need data - only include location fields if not online
     const needData: any = {
       title: formData.title,
       description: formData.description,
       online: formData.online,
-      type: 'need',
+      type: 'need' as const,
     };
 
     // Only add optional fields if they have values
     if (formData.dateTime) {
       needData.dateTime = formData.dateTime;
+    }
+    if (formData.endDateTime) {
+      needData.endDateTime = formData.endDateTime;
     }
     if (formData.price) {
       needData.price = formData.price;
@@ -74,14 +118,19 @@ const INeed = () => {
       if (formData.state) needData.state = formData.state;
     }
     
-    // Add the need to the global state
-    addOffer(needData);
-    
-    console.log('Need added, navigating to home...');
-    
-    // Show success message and navigate to home
-    alert('Request submitted successfully!');
-    navigate('/');
+    if (isEditing && editId) {
+      // Update existing need
+      updateOffer(editId, needData);
+      console.log('Need updated, navigating to post detail...');
+      alert('Request updated successfully!');
+      navigate(`/post/${editId}`);
+    } else {
+      // Add new need
+      addOffer(needData);
+      console.log('Need added, navigating to home...');
+      alert('Request submitted successfully!');
+      navigate('/');
+    }
   };
 
   const handleCancel = () => {
@@ -95,8 +144,12 @@ const INeed = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">{t('iNeed.title')}</h1>
-            <p className="text-gray-600 mt-2">{t('iNeed.subtitle')}</p>
+            <h1 className="text-3xl font-bold text-gray-800">
+              {isEditing ? 'Edit Request' : t('iNeed.title')}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {isEditing ? 'Update your request details' : t('iNeed.subtitle')}
+            </p>
           </div>
           <LanguageSwitcher />
         </div>
@@ -138,16 +191,33 @@ const INeed = () => {
               />
             </div>
 
-            {/* Date and Time - Optional */}
+            {/* Start Date and Time - Optional */}
             <div>
               <label htmlFor="dateTime" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('iNeed.form.dateTime')} ({t('iNeed.form.optional')})
+                Start Date and Time ({t('iNeed.form.optional')})
               </label>
               <input
                 type="datetime-local"
                 id="dateTime"
                 name="dateTime"
+                min={getCurrentDateTime()}
                 value={formData.dateTime}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* End Date and Time - Optional */}
+            <div>
+              <label htmlFor="endDateTime" className="block text-sm font-medium text-gray-700 mb-2">
+                End Date and Time ({t('iNeed.form.optional')})
+              </label>
+              <input
+                type="datetime-local"
+                id="endDateTime"
+                name="endDateTime"
+                min={formData.dateTime || getCurrentDateTime()}
+                value={formData.endDateTime}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
@@ -247,7 +317,7 @@ const INeed = () => {
                 type="submit"
                 className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors"
               >
-                {t('iNeed.form.submit')}
+                {isEditing ? 'Update Request' : t('iNeed.form.submit')}
               </button>
               <button
                 type="button"

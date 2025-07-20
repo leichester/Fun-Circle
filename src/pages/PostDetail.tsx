@@ -189,6 +189,14 @@ const PostDetail = () => {
                 <span className="font-medium">
                   Posted by: {post.userDisplayName || post.userEmail || 'Anonymous'}
                 </span>
+                {user && post.userId === user.uid && (
+                  <Link
+                    to={`/${post.type === 'need' ? 'i-need' : 'i-offer'}?edit=${post.id}`}
+                    className="ml-2 text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Edit
+                  </Link>
+                )}
               </div>
             </div>
 
