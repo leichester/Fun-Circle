@@ -5,12 +5,14 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 import Navigation from '../components/Navigation';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
+import { useAdmin } from '../contexts/AdminContext';
 
 const Home = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { offers, loading, toggleAttendance, addReply, replies: allReplies } = useOffers();
+  const { offers, loading, toggleAttendance, addReply, replies: allReplies, deleteOffer } = useOffers();
   const { user, signOut } = useAuth();
+  const { isAdmin, hasPermission, pinPost, deleteAnyPost } = useAdmin();
   
   // State for reply functionality
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -160,6 +162,72 @@ const Home = () => {
     setNestedReplyingTo(null);
   };
 
+  // Admin handler functions
+  const handlePinPost = async (postId: string, isPinned: boolean) => {
+    if (!hasPermission('pin_posts')) {
+      alert('You do not have permission to pin posts');
+      return;
+    }
+
+    try {
+      const success = await pinPost(postId, !isPinned);
+      if (success) {
+        // Posts will automatically refresh due to real-time listener
+      } else {
+        alert('Failed to update post pin status');
+      }
+    } catch (error) {
+      console.error('Error pinning post:', error);
+      alert('Error updating post pin status');
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!hasPermission('delete_posts')) {
+      alert('You do not have permission to delete posts');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      'Are you sure you want to PERMANENTLY delete this post? This action cannot be undone.'
+    );
+    
+    if (confirmDelete) {
+      try {
+        console.log('🗑️ Admin attempting to delete post:', postId);
+        const success = await deleteAnyPost(postId);
+        if (success) {
+          console.log('✅ Post deleted successfully');
+          // Posts will automatically refresh due to real-time listener
+        } else {
+          console.error('❌ Delete operation returned false');
+          alert('Failed to delete post. Check console for details.');
+        }
+      } catch (error) {
+        console.error('❌ Error in delete handler:', error);
+        alert('Error deleting post: ' + error);
+      }
+    }
+  };
+
+  const handleDeleteOwnPost = async (postId: string) => {
+    const confirmDelete = window.confirm(
+      'Are you sure you want to delete your post? This action cannot be undone.'
+    );
+    
+    if (confirmDelete) {
+      try {
+        console.log('🗑️ User deleting their own post:', postId);
+        await deleteOffer(postId);
+        console.log('✅ Post deleted successfully');
+        // Posts will automatically refresh due to real-time listener
+      } catch (error) {
+        console.error('❌ Error deleting post:', error);
+        alert('Error deleting post. Please try again.');
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* User Auth & Language Switcher - Top Right */}
@@ -175,6 +243,15 @@ const Home = () => {
                 {user.displayName || user.email}
               </button>
             </span>
+            {isAdmin && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="bg-purple-500 text-white px-3 py-1 rounded text-xs hover:bg-purple-600 transition-colors"
+                title="Admin Panel"
+              >
+                👑 Admin
+              </button>
+            )}
             <button
               onClick={handleSignOut}
               className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600 transition-colors"
@@ -226,19 +303,28 @@ const Home = () => {
                 return (
                 <div
                   key={offer.id}
-                  className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
+                  className={`bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow ${
+                    offer.pinned ? 'border-yellow-400 bg-gradient-to-r from-yellow-50 to-white' : 'border-gray-200'
+                  }`}
                 >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
-                      <Link to={`/post/${offer.id}`}>
-                        <h3 className="text-xl font-semibold text-gray-800 mb-2 hover:text-blue-600 transition-colors cursor-pointer">
-                          {offer.type === 'need' ? (
-                            <span className="text-green-600 font-bold">[I NEED]</span>
-                          ) : (
-                            <span className="text-blue-600 font-bold">[I OFFER]</span>
-                          )} {offer.title}
-                        </h3>
-                      </Link>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Link to={`/post/${offer.id}`}>
+                          <h3 className="text-xl font-semibold text-gray-800 hover:text-blue-600 transition-colors cursor-pointer">
+                            {offer.type === 'need' ? (
+                              <span className="text-green-600 font-bold">[I NEED]</span>
+                            ) : (
+                              <span className="text-blue-600 font-bold">[I OFFER]</span>
+                            )} {offer.title}
+                          </h3>
+                        </Link>
+                        {offer.pinned && (
+                          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded flex items-center gap-1">
+                            📌 Pinned
+                          </span>
+                        )}
+                      </div>
                       <p className="text-gray-600 mb-3 line-clamp-2">
                         {offer.description}
                       </p>
@@ -247,8 +333,40 @@ const Home = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                         <span className="font-medium">
-                          Posted by: {offer.userDisplayName || offer.userEmail || 'Anonymous'}
+                          Posted by: 
+                          <Link 
+                            to={`/user/${offer.userId}`}
+                            className="text-blue-600 hover:text-blue-800 hover:underline ml-1"
+                          >
+                            {offer.userDisplayName || offer.userEmail || 'Anonymous'}
+                          </Link>
                         </span>
+                        
+                        {/* User's Own Post Edit/Delete Buttons - Right after "Posted by" */}
+                        {user && offer.userId === user.uid && (
+                          <div className="ml-3 flex gap-1">
+                            <Link
+                              to={`/${offer.type === 'need' ? 'i-need' : 'i-offer'}?edit=${offer.id}`}
+                              className="px-2 py-1 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md transition-colors flex items-center gap-1"
+                              title="Edit your post"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Edit
+                            </Link>
+                            <button
+                              onClick={() => handleDeleteOwnPost(offer.id)}
+                              className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded-md transition-colors flex items-center gap-1"
+                              title="Delete your post"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                         {offer.dateTime && (
@@ -332,6 +450,34 @@ const Home = () => {
                             return replyCount > 0 ? ` (${replyCount})` : '';
                           })()}`}
                         </button>
+
+                        {/* Admin Controls - Only visible to admins */}
+                        {isAdmin && (
+                          <div className="ml-2 flex gap-1">
+                            {hasPermission('pin_posts') && (
+                              <button
+                                onClick={() => handlePinPost(offer.id, offer.pinned || false)}
+                                className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                                  offer.pinned
+                                    ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                                title={offer.pinned ? 'Unpin post' : 'Pin post'}
+                              >
+                                {offer.pinned ? '📌 Unpin' : '📌 Pin'}
+                              </button>
+                            )}
+                            {hasPermission('delete_posts') && (
+                              <button
+                                onClick={() => handleDeletePost(offer.id)}
+                                className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded-md transition-colors"
+                                title="Delete post"
+                              >
+                                🗑️ Delete
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       
                       {/* Reply Form and Replies Display - Show only for the post being replied to */}
@@ -342,9 +488,6 @@ const Home = () => {
                             const postReplies = getPostReplies(offer.id);
                             return postReplies.length > 0 && (
                               <div className="mb-4">
-                                <h4 className="text-sm font-medium text-gray-800 mb-3">
-                                  Replies ({postReplies.length}):
-                                </h4>
                                 <div className="space-y-3 max-h-60 overflow-y-auto">
                                   {postReplies.map((reply: any) => (
                                     <div 
@@ -354,18 +497,24 @@ const Home = () => {
                                       }`}
                                       style={reply.depth > 0 ? { marginLeft: `${Math.min(reply.depth * 20, 60)}px` } : {}}
                                     >
-                                      <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-medium text-gray-700">
-                                            {reply.userDisplayName || reply.userEmail}
+                                      <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-start gap-2 flex-1">
+                                          <span className="font-medium text-gray-700 flex-shrink-0">
+                                            <Link 
+                                              to={`/user/${reply.userId}`}
+                                              className="text-blue-600 hover:text-blue-800 hover:underline"
+                                            >
+                                              {reply.userDisplayName || reply.userEmail}
+                                            </Link>
+                                            {reply.depth > 0 && reply.parentReplyId && (
+                                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded ml-2">
+                                                reply
+                                              </span>
+                                            )}:
                                           </span>
-                                          {reply.depth > 0 && reply.parentReplyId && (
-                                            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                                              reply
-                                            </span>
-                                          )}
+                                          <p className="text-gray-600 flex-1">{reply.text}</p>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                                           <span className="text-xs text-gray-500">
                                             {(() => {
                                               const date = reply.createdAt.toDate ? reply.createdAt.toDate() : new Date(reply.createdAt);
@@ -394,7 +543,6 @@ const Home = () => {
                                           )}
                                         </div>
                                       </div>
-                                      <p className="text-gray-600 mb-2">{reply.text}</p>
                                       
                                       {/* Inline nested reply form */}
                                       {user && nestedReplyingTo?.replyId === reply.id && (

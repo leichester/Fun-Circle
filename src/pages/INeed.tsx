@@ -9,7 +9,7 @@ const INeed = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { addOffer, offers, updateOffer } = useOffers();
+  const { addOffer, offers, updateOffer, deleteOffer } = useOffers();
   const { user, loading } = useAuth();
   
   const editId = searchParams.get('edit');
@@ -136,6 +136,23 @@ const INeed = () => {
   const handleCancel = () => {
     // Navigate back to home page
     navigate('/');
+  };
+
+  const handleDelete = async () => {
+    if (!editId) return;
+    
+    const confirmDelete = window.confirm('Are you sure you want to delete this request? This action cannot be undone.');
+    
+    if (confirmDelete) {
+      try {
+        await deleteOffer(editId);
+        alert('Request deleted successfully!');
+        navigate('/');
+      } catch (error) {
+        console.error('Error deleting request:', error);
+        alert('Failed to delete request. Please try again.');
+      }
+    }
   };
 
   return (
@@ -326,6 +343,15 @@ const INeed = () => {
               >
                 {t('iNeed.form.cancel')}
               </button>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="flex-1 bg-red-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                >
+                  Delete
+                </button>
+              )}
             </div>
           </form>
         </div>

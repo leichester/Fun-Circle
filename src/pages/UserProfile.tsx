@@ -1,8 +1,10 @@
-import { useNavigate, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useNavigate, Link, useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useAuth } from '../contexts/FirebaseAuthContext';
 import { useOffers } from '../contexts/FirebaseOffersContext';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 // ReplyComponent for displaying nested replies
 const ReplyComponent = ({ reply, depth = 0 }: { reply: any, depth?: number }) => {
@@ -12,16 +14,25 @@ const ReplyComponent = ({ reply, depth = 0 }: { reply: any, depth?: number }) =>
   return (
     <div className={`${actualDepth > 0 ? 'ml-4 border-l-2 border-gray-200 pl-4' : ''}`}>
       <div className="bg-gray-50 rounded-lg p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-            {(reply.userDisplayName || reply.userEmail || 'A')?.charAt(0).toUpperCase()}
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex items-start gap-2 flex-1">
+            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              {(reply.userDisplayName || reply.userEmail || 'A')?.charAt(0).toUpperCase()}
+            </div>
+            <span className="text-sm font-medium text-gray-700 flex-shrink-0">
+              <Link 
+                to={`/user/${reply.userId}`}
+                className="text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                {reply.userDisplayName || reply.userEmail || 'Anonymous'}
+              </Link>:
+            </span>
+            <p className="text-sm text-gray-600 flex-1">{reply.text}</p>
           </div>
-          <span className="text-sm font-medium text-gray-700">{reply.userDisplayName || reply.userEmail || 'Anonymous'}</span>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
             {reply.createdAt.toLocaleDateString()} at {reply.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
-        <p className="text-sm text-gray-600 mb-2">{reply.text}</p>
       </div>
       
       {/* Render nested replies */}
@@ -38,23 +49,148 @@ const ReplyComponent = ({ reply, depth = 0 }: { reply: any, depth?: number }) =>
 
 const UserProfile = () => {
   const navigate = useNavigate();
+  const { userId } = useParams(); // Get userId from URL parameters
   const { user, signOut } = useAuth();
-  const { offers, replies } = useOffers();
+  const { offers, replies, loading } = useOffers(); // Add loading from offers context
   
-  // State for managing collapsed replies per post
-  const [collapsedReplies, setCollapsedReplies] = useState<Set<string>>(new Set());
+  // State for managing which posts have replies shown
+  const [showingReplies, setShowingReplies] = useState<Set<string>>(new Set());
   
-  // Redirect if not authenticated
-  if (!user) {
+  // Bio state
+  const [bio, setBio] = useState('');
+  const [isLoadingBio, setIsLoadingBio] = useState(true);
+  
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileInput, setProfileInput] = useState({
+    displayName: '',
+    bio: ''
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  
+  // State for other user's profile data
+  const [profileUser, setProfileUser] = useState<any>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  
+  // Determine if we're viewing our own profile or someone else's
+  const isOwnProfile = !userId || (user && userId === user.uid);
+  const displayUser = isOwnProfile ? user : profileUser;
+  
+  // Load other user's profile data if needed
+  useEffect(() => {
+    if (userId && userId !== user?.uid) {
+      setLoadingProfile(true);
+      const loadOtherUserProfile = async () => {
+        try {
+          console.log('Loading profile for userId:', userId);
+          
+          // First try to get user data from Firestore users collection
+          const userDocRef = doc(db, 'users', userId);
+          const userDoc = await getDoc(userDocRef);
+          let userData: any = { uid: userId };
+          
+          if (userDoc.exists()) {
+            userData = { uid: userId, ...userDoc.data() };
+            console.log('User data from users collection:', userData);
+          }
+          
+          // If we don't have displayName or email from users collection,
+          // try to get it from their posts
+          if (!userData.displayName && !userData.email && offers.length > 0) {
+            console.log('Looking for user info in posts...');
+            const userPost = offers.find(offer => offer.userId === userId);
+            console.log('Found user post:', userPost);
+            if (userPost) {
+              userData.displayName = userPost.userDisplayName;
+              userData.email = userPost.userEmail;
+              // Also try to get creation date from the post's createdAt if no user document exists
+              if (!userData.createdAt && userPost.createdAt) {
+                userData.createdAt = userPost.createdAt;
+              }
+              console.log('Updated userData from post:', userData);
+            }
+          }
+          
+          // Fallback: if still no display name, use email or set to Unknown
+          if (!userData.displayName && userData.email) {
+            userData.displayName = userData.email;
+          } else if (!userData.displayName && !userData.email) {
+            userData.displayName = 'Unknown User';
+            userData.email = 'No email available';
+          }
+          
+          console.log('Final userData:', userData);
+          setProfileUser(userData);
+        } catch (error) {
+          console.error('Error loading user profile:', error);
+          // Try to get user info from their posts as fallback
+          if (offers.length > 0) {
+            const userPost = offers.find(offer => offer.userId === userId);
+            console.log('Fallback: Found user post:', userPost);
+            if (userPost) {
+              const fallbackUserData = {
+                uid: userId,
+                displayName: userPost.userDisplayName || userPost.userEmail,
+                email: userPost.userEmail,
+                createdAt: userPost.createdAt // Try to use post creation as approximation
+              };
+              
+              // Try to create the missing user document with the post data
+              try {
+                const userDocRef = doc(db, 'users', userId);
+                await setDoc(userDocRef, {
+                  email: userPost.userEmail,
+                  displayName: userPost.userDisplayName || userPost.userEmail,
+                  createdAt: userPost.createdAt || new Date(),
+                  updatedAt: new Date(),
+                  source: 'backfilled_from_post'
+                });
+                console.log('✅ Created missing user document from post data');
+              } catch (setDocError) {
+                console.error('Failed to create user document:', setDocError);
+              }
+              
+              setProfileUser(fallbackUserData);
+            } else {
+              setProfileUser({ 
+                uid: userId, 
+                displayName: 'Unknown User',
+                email: 'No email available' 
+              });
+            }
+          } else {
+            setProfileUser({ 
+              uid: userId, 
+              displayName: 'Unknown User',
+              email: 'No email available' 
+            });
+          }
+        } finally {
+          setLoadingProfile(false);
+        }
+      };
+      
+      // Only load if we have offers data or if offers are done loading
+      if (!loading) {
+        loadOtherUserProfile();
+      }
+    } else {
+      setLoadingProfile(false);
+    }
+  }, [userId, user, offers, loading]); // Add loading to dependencies
+  
+  // Redirect if not authenticated and trying to view own profile
+  if (!user && isOwnProfile) {
     navigate('/');
     return null;
   }
 
-  // Get user's posts
-  const userPosts = offers.filter(offer => offer.userId === user.uid);
+  // Get user's posts - either current user or the profile user
+  const targetUserId = isOwnProfile ? user?.uid : userId;
+  const userPosts = offers.filter(offer => offer.userId === targetUserId);
   
-  // Get user's replies
-  const userReplies = replies.filter(reply => reply.userId === user.uid);
+  // Get user's replies - either current user or the profile user  
+  const userReplies = replies.filter(reply => reply.userId === targetUserId);
 
   // Function to determine post status
   const getPostStatus = (post: any) => {
@@ -97,7 +233,7 @@ const UserProfile = () => {
 
   // Toggle replies collapse/expand for a specific post
   const toggleRepliesCollapse = (postId: string) => {
-    setCollapsedReplies(prev => {
+    setShowingReplies(prev => {
       const newSet = new Set(prev);
       if (newSet.has(postId)) {
         newSet.delete(postId);
@@ -116,6 +252,304 @@ const UserProfile = () => {
       console.error('Sign out error:', error);
     }
   };
+
+  // Bio management functions
+  const loadUserBio = async () => {
+    const bioUserId = isOwnProfile ? user?.uid : userId;
+    if (!bioUserId) return;
+    
+    try {
+      const userDocRef = doc(db, 'users', bioUserId);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setBio(userData.bio || '');
+      }
+    } catch (error) {
+      console.error('Error loading bio:', error);
+    } finally {
+      setIsLoadingBio(false);
+    }
+  };
+
+  // Utility function to fix missing user data for current user (debugging)
+  const fixCurrentUserData = async () => {
+    if (!user) return;
+    console.log('🔧 Starting comprehensive user data fix...');
+    
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      let updateData: any = {};
+      let hasUpdates = false;
+      
+      if (userDoc.exists()) {
+        const existingData = userDoc.data();
+        console.log('Existing user data:', existingData);
+        
+        // Fix missing displayName
+        if (!existingData.displayName && user.displayName) {
+          updateData.displayName = user.displayName;
+          hasUpdates = true;
+          console.log('Adding missing displayName:', user.displayName);
+        }
+        
+        // Fix missing email
+        if (!existingData.email && user.email) {
+          updateData.email = user.email;
+          hasUpdates = true;
+          console.log('Adding missing email:', user.email);
+        }
+        
+        // Fix missing createdAt
+        if (!existingData.createdAt) {
+          // Try Firebase Auth metadata first
+          if (user.metadata?.creationTime) {
+            updateData.createdAt = new Date(user.metadata.creationTime);
+            hasUpdates = true;
+            console.log('Adding createdAt from Firebase Auth:', user.metadata.creationTime);
+          } else {
+            // Fallback: try to find earliest post by this user
+            const userPosts = offers.filter(offer => offer.userId === user.uid);
+            if (userPosts.length > 0) {
+              const sortedPosts = userPosts.sort((a, b) => {
+                const dateA = (a.createdAt as any)?.seconds ? new Date((a.createdAt as any).seconds * 1000) : new Date(a.createdAt as any);
+                const dateB = (b.createdAt as any)?.seconds ? new Date((b.createdAt as any).seconds * 1000) : new Date(b.createdAt as any);
+                return dateA.getTime() - dateB.getTime();
+              });
+              
+              const earliestPost = sortedPosts[0];
+              if (earliestPost?.createdAt) {
+                const postDate = (earliestPost.createdAt as any)?.seconds 
+                  ? new Date((earliestPost.createdAt as any).seconds * 1000)
+                  : new Date(earliestPost.createdAt as any);
+                updateData.createdAt = postDate;
+                hasUpdates = true;
+                console.log('Adding createdAt from earliest post:', postDate);
+              }
+            }
+            
+            // Last resort: use current date
+            if (!updateData.createdAt) {
+              updateData.createdAt = new Date();
+              hasUpdates = true;
+              console.log('Adding createdAt as current date (last resort)');
+            }
+          }
+        }
+        
+        if (hasUpdates) {
+          updateData.updatedAt = new Date();
+          updateData.fixedAt = new Date();
+          
+          await setDoc(userDocRef, updateData, { merge: true });
+          console.log('✅ User data updated successfully:', updateData);
+          alert('User data fixed successfully! Refresh the page to see updates.');
+        } else {
+          console.log('ℹ️ No updates needed, user data looks complete');
+          alert('User data already looks complete!');
+        }
+      } else {
+        console.log('Creating new user document...');
+        // Create new user document with all available data
+        const newUserData = {
+          email: user.email,
+          displayName: user.displayName || user.email,
+          createdAt: user.metadata?.creationTime ? new Date(user.metadata.creationTime) : new Date(),
+          updatedAt: new Date(),
+          source: 'comprehensive_fix'
+        };
+        
+        await setDoc(userDocRef, newUserData);
+        console.log('✅ New user document created:', newUserData);
+        alert('User document created successfully! Refresh the page to see updates.');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error fixing user data:', error);
+      alert('Failed to fix user data. Check console for details.');
+    }
+  };
+
+  // Batch fix function for all users (admin debugging tool)
+  const fixAllUsersData = async () => {
+    if (!user) return;
+    
+    const confirmFix = window.confirm(
+      'This will attempt to fix data for all users who have posted. This may take a while and should only be done by admins. Continue?'
+    );
+    
+    if (!confirmFix) return;
+    
+    console.log('🔧 Starting batch user data fix...');
+    
+    try {
+      // Get all unique user IDs from posts
+      const uniqueUserIds = [...new Set(offers.map(offer => offer.userId))];
+      console.log('Found unique user IDs:', uniqueUserIds.length);
+      
+      let fixedCount = 0;
+      let errorCount = 0;
+      
+      for (const userId of uniqueUserIds) {
+        try {
+          console.log(`Processing user ${fixedCount + 1}/${uniqueUserIds.length}:`, userId);
+          
+          const userDocRef = doc(db, 'users', userId);
+          const userDoc = await getDoc(userDocRef);
+          
+          // Find user's posts to extract information
+          const userPosts = offers.filter(offer => offer.userId === userId);
+          if (userPosts.length === 0) continue;
+          
+          // Get the most recent post for latest info
+          const latestPost = userPosts.sort((a, b) => {
+            const dateA = (a.createdAt as any)?.seconds ? new Date((a.createdAt as any).seconds * 1000) : new Date(a.createdAt as any);
+            const dateB = (b.createdAt as any)?.seconds ? new Date((b.createdAt as any).seconds * 1000) : new Date(b.createdAt as any);
+            return dateB.getTime() - dateA.getTime();
+          })[0];
+          
+          // Get the earliest post for creation date approximation
+          const earliestPost = userPosts.sort((a, b) => {
+            const dateA = (a.createdAt as any)?.seconds ? new Date((a.createdAt as any).seconds * 1000) : new Date(a.createdAt as any);
+            const dateB = (b.createdAt as any)?.seconds ? new Date((b.createdAt as any).seconds * 1000) : new Date(b.createdAt as any);
+            return dateA.getTime() - dateB.getTime();
+          })[0];
+          
+          const createdAtApprox = (earliestPost.createdAt as any)?.seconds 
+            ? new Date((earliestPost.createdAt as any).seconds * 1000)
+            : new Date(earliestPost.createdAt as any);
+          
+          let updateData: any = {};
+          let hasUpdates = false;
+          
+          if (userDoc.exists()) {
+            const existingData = userDoc.data();
+            
+            // Fix missing createdAt
+            if (!existingData.createdAt) {
+              updateData.createdAt = createdAtApprox;
+              hasUpdates = true;
+            }
+            
+            // Fix missing displayName
+            if (!existingData.displayName && latestPost.userDisplayName) {
+              updateData.displayName = latestPost.userDisplayName;
+              hasUpdates = true;
+            }
+            
+            // Fix missing email
+            if (!existingData.email && latestPost.userEmail) {
+              updateData.email = latestPost.userEmail;
+              hasUpdates = true;
+            }
+            
+            if (hasUpdates) {
+              updateData.updatedAt = new Date();
+              updateData.batchFixedAt = new Date();
+              await setDoc(userDocRef, updateData, { merge: true });
+              fixedCount++;
+            }
+          } else {
+            // Create new user document
+            const newUserData = {
+              email: latestPost.userEmail || 'Unknown',
+              displayName: latestPost.userDisplayName || latestPost.userEmail || 'Unknown User',
+              createdAt: createdAtApprox,
+              updatedAt: new Date(),
+              batchFixedAt: new Date(),
+              source: 'batch_backfilled_from_posts'
+            };
+            
+            await setDoc(userDocRef, newUserData);
+            fixedCount++;
+          }
+          
+          // Small delay to avoid overwhelming Firestore
+          if (fixedCount % 10 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+        } catch (userError) {
+          console.error('Error fixing user:', userId, userError);
+          errorCount++;
+        }
+      }
+      
+      console.log(`✅ Batch fix completed. Fixed: ${fixedCount}, Errors: ${errorCount}`);
+      alert(`Batch fix completed!\nFixed: ${fixedCount} users\nErrors: ${errorCount}\n\nRefresh the page to see updates.`);
+      
+    } catch (error) {
+      console.error('❌ Error in batch fix:', error);
+      alert('Batch fix failed. Check console for details.');
+    }
+  };
+
+  // Profile editing functions
+  const handleEditProfile = () => {
+    setProfileInput({
+      displayName: displayUser?.displayName || '',
+      bio: bio
+    });
+    setIsEditingProfile(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user || !isOwnProfile) return;
+    
+    // Validate display name
+    if (!profileInput.displayName.trim()) {
+      alert('Display name cannot be empty');
+      return;
+    }
+    
+    // Limit bio to 100 characters
+    const trimmedBio = profileInput.bio.trim().slice(0, 100);
+    const trimmedDisplayName = profileInput.displayName.trim();
+    
+    setIsSavingProfile(true);
+    try {
+      // Update user document in Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      await setDoc(userDocRef, { 
+        displayName: trimmedDisplayName,
+        bio: trimmedBio,
+        updatedAt: new Date()
+      }, { merge: true });
+      
+      // Update Firebase Auth profile
+      const { updateProfile } = await import('firebase/auth');
+      await updateProfile(user, {
+        displayName: trimmedDisplayName
+      });
+      
+      // Update local state
+      setBio(trimmedBio);
+      setIsEditingProfile(false);
+      
+      alert('Profile updated successfully!');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleCancelProfile = () => {
+    setProfileInput({
+      displayName: displayUser?.displayName || '',
+      bio: bio
+    });
+    setIsEditingProfile(false);
+  };
+
+  // Load bio on component mount or when userId changes
+  useEffect(() => {
+    loadUserBio();
+  }, [user, userId, isOwnProfile]);
 
   const handleGoBack = () => {
     navigate('/');
@@ -137,8 +571,12 @@ const UserProfile = () => {
               Back to Home
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">User Profile</h1>
-              <p className="text-gray-600 mt-2">Manage your account and view your activity</p>
+              <h1 className="text-3xl font-bold text-gray-800">
+                {isOwnProfile ? 'User Profile' : `${displayUser?.displayName || displayUser?.email || 'User'}'s Profile`}
+              </h1>
+              <p className="text-gray-600 mt-2">
+                {isOwnProfile ? 'Manage your account and view your activity' : 'View user activity and information'}
+              </p>
             </div>
           </div>
           <LanguageSwitcher />
@@ -146,53 +584,226 @@ const UserProfile = () => {
 
         {/* Profile Container */}
         <div className="max-w-4xl mx-auto">
-          {/* User Info Card */}
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <div className="flex items-center gap-6 mb-6">
-              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center">
-                <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+          {/* Show loading state for other user's profile */}
+          {!isOwnProfile && loadingProfile ? (
+            <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading user profile...</p>
               </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  {user.displayName || user.email}
-                </h2>
-                <p className="text-gray-600">{user.email}</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Member since: {user.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString() : 'N/A'}
-                </p>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Sign Out
-              </button>
             </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{userPosts.length}</div>
-                <div className="text-sm text-gray-600">Posts Created</div>
-              </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{userReplies.length}</div>
-                <div className="text-sm text-gray-600">Replies Made</div>
-              </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">
-                  {userPosts.reduce((total, post) => total + (post.attendeeCount || 0), 0)}
+          ) : (
+            <>
+              {/* User Info Card */}
+              <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+                <div className="flex items-center gap-6 mb-6">
+                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      {displayUser?.displayName || displayUser?.email || 'Anonymous User'}
+                    </h2>
+                    <p className="text-gray-600">{displayUser?.email || 'No email available'}</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Member since: {
+                        (() => {
+                          console.log('Debug - displayUser for member since:', displayUser);
+                          
+                          // Handle Firestore Timestamp objects (has .seconds property)
+                          if (displayUser?.createdAt?.seconds) {
+                            console.log('Using Firestore timestamp:', displayUser.createdAt);
+                            return new Date(displayUser.createdAt.seconds * 1000).toLocaleDateString();
+                          }
+                          // Handle regular Date objects or date strings
+                          else if (displayUser?.createdAt) {
+                            console.log('Using regular date:', displayUser.createdAt);
+                            return new Date(displayUser.createdAt).toLocaleDateString();
+                          }
+                          // Handle Firebase Auth metadata (for current user)
+                          else if (displayUser?.metadata?.creationTime) {
+                            console.log('Using Firebase Auth metadata:', displayUser.metadata.creationTime);
+                            return new Date(displayUser.metadata.creationTime).toLocaleDateString();
+                          }
+                          // Try to extract from user ID or other sources
+                          else if (isOwnProfile && user?.metadata?.creationTime) {
+                            console.log('Using current user Firebase Auth metadata:', user.metadata.creationTime);
+                            return new Date(user.metadata.creationTime).toLocaleDateString();
+                          }
+                          // Try to find the earliest post by this user as approximation
+                          else {
+                            console.log('No creation date found, trying to find earliest post...');
+                            const userPosts = offers.filter(offer => offer.userId === (displayUser?.uid || userId));
+                            console.log('User posts found:', userPosts.length);
+                            
+                            if (userPosts.length > 0) {
+                              // Sort posts by creation date and get the earliest
+                              const sortedPosts = userPosts.sort((a, b) => {
+                                const dateA = (a.createdAt as any)?.seconds ? new Date((a.createdAt as any).seconds * 1000) : new Date(a.createdAt as any);
+                                const dateB = (b.createdAt as any)?.seconds ? new Date((b.createdAt as any).seconds * 1000) : new Date(b.createdAt as any);
+                                return dateA.getTime() - dateB.getTime();
+                              });
+                              
+                              const earliestPost = sortedPosts[0];
+                              if (earliestPost?.createdAt) {
+                                const postDate = (earliestPost.createdAt as any)?.seconds 
+                                  ? new Date((earliestPost.createdAt as any).seconds * 1000)
+                                  : new Date(earliestPost.createdAt as any);
+                                console.log('Using earliest post date as approximation:', postDate);
+                                return `~${postDate.toLocaleDateString()}`;
+                              }
+                            }
+                            
+                            console.log('No creation date found anywhere, showing N/A');
+                            return 'N/A';
+                          }
+                        })()
+                      }
+                    </p>
+                    
+                    {/* Bio Section */}
+                    <div className="mt-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium text-gray-700">Bio:</span>
+                      </div>
+                      
+                      {isLoadingBio ? (
+                        <div className="text-sm text-gray-500 italic">Loading bio...</div>
+                      ) : (
+                        <p className="text-sm text-gray-600 italic">
+                          {bio || (isOwnProfile ? "No bio added yet. Use 'Edit Profile' to add one!" : "No bio available.")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {isOwnProfile && (
+                    <>
+                      <button
+                        onClick={handleEditProfile}
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors mr-2"
+                      >
+                        Edit Profile
+                      </button>
+                      <button
+                        onClick={handleSignOut}
+                        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors mr-2"
+                      >
+                        Sign Out
+                      </button>
+                      <button
+                        onClick={fixCurrentUserData}
+                        className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm"
+                      >
+                        Fix User Data (Debug)
+                      </button>
+                      <button
+                        onClick={fixAllUsersData}
+                        className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors text-xs"
+                      >
+                        Fix All Users (Admin)
+                      </button>
+                    </>
+                  )}
                 </div>
-                <div className="text-sm text-gray-600">Total Attendees</div>
               </div>
-            </div>
-          </div>
+
+              {/* Profile Editing Modal */}
+              {isEditingProfile && isOwnProfile && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full mx-4">
+                    <h3 className="text-xl font-bold mb-6">Edit Profile</h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Display Name
+                        </label>
+                        <input
+                          type="text"
+                          value={profileInput.displayName}
+                          onChange={(e) => setProfileInput({
+                            ...profileInput,
+                            displayName: e.target.value
+                          })}
+                          maxLength={50}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter your display name"
+                        />
+                        <div className="text-xs text-gray-500 mt-1">
+                          {profileInput.displayName.length}/50 characters
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Bio
+                        </label>
+                        <textarea
+                          value={profileInput.bio}
+                          onChange={(e) => setProfileInput({
+                            ...profileInput,
+                            bio: e.target.value
+                          })}
+                          maxLength={100}
+                          placeholder="Tell us about yourself (max 100 characters)"
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                          rows={3}
+                        />
+                        <div className="text-xs text-gray-500 mt-1">
+                          {profileInput.bio.length}/100 characters
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end gap-3 mt-6">
+                      <button
+                        onClick={handleCancelProfile}
+                        disabled={isSavingProfile}
+                        className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveProfile}
+                        disabled={isSavingProfile}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {isSavingProfile ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Stats */}
+              <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{userPosts.length}</div>
+                    <div className="text-sm text-gray-600">Posts Created</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{userReplies.length}</div>
+                    <div className="text-sm text-gray-600">Replies Made</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {userPosts.reduce((total, post) => total + (post.attendeeCount || 0), 0)}
+                    </div>
+                    <div className="text-sm text-gray-600">Total Attendees</div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* User's Posts */}
           <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <h3 className="text-xl font-bold text-gray-800 mb-6">Your Posts</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-6">
+              {isOwnProfile ? 'Your Posts' : `${displayUser?.displayName || 'User'}'s Posts`}
+            </h3>
             {userPosts.length > 0 ? (
               <div className="space-y-6">
                 {userPosts.map((post) => {
@@ -257,30 +868,22 @@ const UserProfile = () => {
                       {organizedReplies.length > 0 && (
                         <div className="border-t border-gray-200 bg-white">
                           <div className="p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h5 className="text-sm font-semibold text-gray-700">Replies ({postReplies.length})</h5>
+                            <div className="flex justify-end mb-3">
                               <button
                                 onClick={() => toggleRepliesCollapse(post.id)}
-                                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors ${
+                                  showingReplies.has(post.id) 
+                                    ? 'bg-blue-200 text-blue-700 hover:bg-blue-300' 
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
                               >
-                                {collapsedReplies.has(post.id) ? (
-                                  <>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                    Show
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                                    </svg>
-                                    Hide
-                                  </>
-                                )}
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                                {showingReplies.has(post.id) ? 'Close' : `Reply (${postReplies.length})`}
                               </button>
                             </div>
-                            {!collapsedReplies.has(post.id) && (
+                            {showingReplies.has(post.id) && (
                               <div className="space-y-3">
                                 {organizedReplies.map((reply) => (
                                   <ReplyComponent key={reply.id} reply={reply} />
@@ -301,21 +904,25 @@ const UserProfile = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
                 </div>
-                <p className="text-gray-500 mb-4">You haven't created any posts yet</p>
-                <div className="flex gap-4 justify-center">
-                  <button
-                    onClick={() => navigate('/i-offer')}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Create an Offer
-                  </button>
-                  <button
-                    onClick={() => navigate('/i-need')}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Post a Need
-                  </button>
-                </div>
+                <p className="text-gray-500 mb-4">
+                  {isOwnProfile ? "You haven't created any posts yet" : "This user hasn't created any posts yet"}
+                </p>
+                {isOwnProfile && (
+                  <div className="flex gap-4 justify-center">
+                    <button
+                      onClick={() => navigate('/i-offer')}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Create an Offer
+                    </button>
+                    <button
+                      onClick={() => navigate('/i-need')}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Post a Need
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -329,13 +936,17 @@ const UserProfile = () => {
                   const post = offers.find(offer => offer.id === reply.postId);
                   return (
                     <div key={reply.id} className="border-l-4 border-blue-200 pl-4 py-2">
-                      <p className="text-sm text-gray-600">
-                        You replied to: <span className="font-medium">{post?.title || 'Unknown post'}</span>
-                      </p>
-                      <p className="text-gray-500 text-xs italic">"{reply.text}"</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {reply.createdAt.toLocaleDateString()} at {reply.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="flex items-start gap-2 flex-1">
+                          <span className="text-sm text-gray-600 flex-shrink-0">
+                            {isOwnProfile ? 'You' : (displayUser?.displayName || 'User')} replied to <span className="font-medium">{post?.title || 'Unknown post'}</span>:
+                          </span>
+                          <p className="text-gray-500 text-xs italic flex-1">"{reply.text}"</p>
+                        </div>
+                        <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
+                          {reply.createdAt.toLocaleDateString()} at {reply.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
                     </div>
                   );
                 })}

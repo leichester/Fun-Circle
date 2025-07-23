@@ -9,7 +9,7 @@ const IOffer = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { addOffer, offers, updateOffer } = useOffers();
+  const { addOffer, offers, updateOffer, deleteOffer } = useOffers();
   const { user, loading } = useAuth();
   
   const editId = searchParams.get('edit');
@@ -291,6 +291,23 @@ const IOffer = () => {
     navigate('/');
   };
 
+  const handleDelete = async () => {
+    if (!editId) return;
+    
+    const confirmDelete = window.confirm('Are you sure you want to delete this offer? This action cannot be undone.');
+    
+    if (confirmDelete) {
+      try {
+        await deleteOffer(editId);
+        alert('Offer deleted successfully!');
+        navigate('/');
+      } catch (error) {
+        console.error('Error deleting offer:', error);
+        alert('Failed to delete offer. Please try again.');
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white py-8">
       <div className="container mx-auto px-4">
@@ -503,6 +520,15 @@ const IOffer = () => {
               >
                 {t('iOffer.form.cancel')}
               </button>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="flex-1 bg-red-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                >
+                  Delete
+                </button>
+              )}
             </div>
           </form>
         </div>

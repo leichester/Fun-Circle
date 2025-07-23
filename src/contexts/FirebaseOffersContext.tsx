@@ -47,6 +47,12 @@ export interface Offer {
   attendeeCount?: number; // Count of attendees
   replies?: Reply[]; // Array of replies for this post
   replyCount?: number; // Count of replies
+  pinned?: boolean; // For admin pinned posts
+  pinnedAt?: Date; // When it was pinned
+  pinnedBy?: string; // Admin who pinned it
+  deleted?: boolean; // For admin deleted posts
+  deletedAt?: Date; // When it was deleted
+  deletedBy?: string; // Admin who deleted it
 }
 
 interface OffersContextType {
@@ -97,6 +103,7 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        
         postsData.push({
           id: doc.id,
           title: data.title,
@@ -114,10 +121,34 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
           userDisplayName: data.userDisplayName,
           attendees: data.attendees || [],
           attendeeCount: data.attendeeCount || 0,
+          pinned: data.pinned || false,
+          pinnedAt: data.pinnedAt ? data.pinnedAt.toDate() : undefined,
+          pinnedBy: data.pinnedBy,
+          deleted: data.deleted || false,
+          deletedAt: data.deletedAt ? data.deletedAt.toDate() : undefined,
+          deletedBy: data.deletedBy,
         });
       });
       
+      // Sort posts: pinned posts first (by pin date desc), then by creation date desc
+      postsData.sort((a, b) => {
+        // If one is pinned and the other isn't, pinned comes first
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        
+        // If both are pinned, sort by pinnedAt (most recently pinned first)
+        if (a.pinned && b.pinned) {
+          const pinnedAtA = a.pinnedAt?.getTime() || 0;
+          const pinnedAtB = b.pinnedAt?.getTime() || 0;
+          return pinnedAtB - pinnedAtA;
+        }
+        
+        // If neither is pinned, sort by creation date (newest first)
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+      
       console.log('🔥 Firestore: Received', postsData.length, 'posts from real-time listener');
+      console.log('📌 Pinned posts:', postsData.filter(p => p.pinned).length);
       setOffers(postsData);
       setLoading(false);
     }, (error) => {

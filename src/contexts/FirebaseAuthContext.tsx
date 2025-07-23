@@ -61,6 +61,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         displayName: displayName
       });
       
+      // Store user data in Firestore users collection for future reference
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      
+      const userData = {
+        email: user.email,
+        displayName: displayName,
+        fullName: fullName,
+        userId: userId || null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      await setDoc(doc(db, 'users', user.uid), userData);
+      console.log('✅ Firebase Auth: New user data stored in Firestore:', userData);
+      
       console.log('✅ Firebase Auth: User created successfully:', user.email);
     } catch (error: any) {
       console.error('❌ Firebase Auth: Sign up error:', error);
@@ -71,7 +87,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (email: string, password: string) => {
     console.log('🔥 Firebase Auth: Signing in user...');
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const user = result.user;
+      
+      // Check if user document exists in Firestore, create if not
+      const { doc, setDoc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      // If user document doesn't exist, create it (existing user who signed up before we stored user data)
+      if (!userDoc.exists()) {
+        const userData = {
+          email: user.email,
+          displayName: user.displayName || user.email,
+          fullName: user.displayName || user.email,
+          userId: null,
+          createdAt: user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date(),
+          updatedAt: new Date(),
+          provider: 'email'
+        };
+        
+        await setDoc(userDocRef, userData);
+        console.log('✅ Firebase Auth: Created Firestore document for existing user with data:', userData);
+      } else {
+        console.log('✅ Firebase Auth: User document already exists');
+      }
+      
       console.log('✅ Firebase Auth: User signed in successfully');
     } catch (error: any) {
       console.error('❌ Firebase Auth: Sign in error:', error);
@@ -94,7 +137,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('🔥 Firebase Auth: Signing in with Google...');
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Check if this is a new user and store their data in Firestore
+      const { doc, setDoc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      // If user document doesn't exist, create it (new user)
+      if (!userDoc.exists()) {
+        const userData = {
+          email: user.email,
+          displayName: user.displayName || user.email,
+          fullName: user.displayName || user.email,
+          userId: null, // Google users don't have custom userIds
+          createdAt: user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date(),
+          updatedAt: new Date(),
+          provider: 'google'
+        };
+        
+        await setDoc(userDocRef, userData);
+        console.log('✅ Firebase Auth: New Google user data stored in Firestore:', userData);
+      } else {
+        console.log('✅ Firebase Auth: Google user document already exists');
+      }
+      
       console.log('✅ Firebase Auth: Google sign in successful');
     } catch (error: any) {
       console.error('❌ Firebase Auth: Google sign in error:', error);
