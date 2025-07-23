@@ -19,6 +19,10 @@ const Home = () => {
   const [replyText, setReplyText] = useState('');
   const [nestedReplyingTo, setNestedReplyingTo] = useState<{postId: string, replyId: string, username: string} | null>(null);
 
+  // State for delete confirmation modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<{id: string, title: string} | null>(null);
+
   // Function to determine post status
   const getPostStatus = (post: any) => {
     if (!post.dateTime) {
@@ -119,6 +123,35 @@ const Home = () => {
 
   // Debug logging
   console.log('🏠 Home: Rendering with', offers.length, 'offers, loading:', loading, 'user:', user ? 'logged in' : 'not logged in');
+  
+  // Debug ALL posts to see rating data
+  console.log('🌟 ALL POSTS DEBUG:');
+  offers.forEach((offer, index) => {
+    console.log(`Post ${index + 1}:`, {
+      title: offer.title,
+      id: offer.id,
+      averageRating: offer.averageRating,
+      ratingCount: offer.ratingCount,
+      ratingsArray: offer.ratings,
+      hasRatingsArray: !!offer.ratings,
+      ratingsLength: offer.ratings ? offer.ratings.length : 'N/A'
+    });
+  });
+  
+  // Debug rating data for posts that should have ratings
+  offers.forEach(offer => {
+    if (offer.averageRating || offer.ratingCount || (offer.ratings && offer.ratings.length > 0)) {
+      console.log('🌟 Post with rating data:', {
+        title: offer.title,
+        id: offer.id,
+        averageRating: offer.averageRating,
+        ratingCount: offer.ratingCount,
+        ratingsArrayLength: offer.ratings ? offer.ratings.length : 0,
+        averageRatingType: typeof offer.averageRating,
+        ratingCountType: typeof offer.ratingCount
+      });
+    }
+  });
 
   const handleSignOut = async () => {
     try {
@@ -211,21 +244,53 @@ const Home = () => {
   };
 
   const handleDeleteOwnPost = async (postId: string) => {
-    const confirmDelete = window.confirm(
-      'Are you sure you want to delete your post? This action cannot be undone.'
-    );
+    // Find the post to get its title
+    const post = offers.find(offer => offer.id === postId);
+    const postTitle = post?.title || 'this post';
     
-    if (confirmDelete) {
-      try {
-        console.log('🗑️ User deleting their own post:', postId);
-        await deleteOffer(postId);
-        console.log('✅ Post deleted successfully');
-        // Posts will automatically refresh due to real-time listener
-      } catch (error) {
-        console.error('❌ Error deleting post:', error);
-        alert('Error deleting post. Please try again.');
-      }
+    // Set the post to delete and show modal
+    setPostToDelete({ id: postId, title: postTitle });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeletePost = async () => {
+    if (!postToDelete) return;
+    
+    try {
+      console.log('🗑️ User deleting their own post:', postToDelete.id);
+      await deleteOffer(postToDelete.id);
+      console.log('✅ Post deleted successfully');
+      // Posts will automatically refresh due to real-time listener
+      
+      // Close modal and reset state
+      setShowDeleteModal(false);
+      setPostToDelete(null);
+    } catch (error) {
+      console.error('❌ Error deleting post:', error);
+      alert('Error deleting post. Please try again.');
     }
+  };
+
+  const cancelDeletePost = () => {
+    setShowDeleteModal(false);
+    setPostToDelete(null);
+  };
+
+  // Rating handler functions
+  const handleRatePost = (postId: string, _postTitle: string, postUserId: string) => {
+    // Prevent users from rating their own posts
+    if (user && postUserId === user.uid) {
+      alert('You cannot rate your own post');
+      return;
+    }
+
+    if (!user) {
+      alert('Please sign in to rate posts');
+      return;
+    }
+
+    // Navigate to the rating page
+    navigate(`/rate/${postId}`);
   };
 
   return (
@@ -303,10 +368,28 @@ const Home = () => {
                 return (
                 <div
                   key={offer.id}
-                  className={`bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow ${
+                  className={`relative bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow ${
                     offer.pinned ? 'border-yellow-400 bg-gradient-to-r from-yellow-50 to-white' : 'border-gray-200'
                   }`}
                 >
+                  {/* Rating Button - Top Right Corner */}
+                  <button
+                    onClick={() => handleRatePost(offer.id, offer.title, offer.userId)}
+                    className="absolute top-4 right-4 flex items-center gap-1 text-gray-600 hover:text-yellow-600 transition-colors bg-transparent border-none outline-none p-0 m-0"
+                    title={offer.averageRating ? `Current rating: ${offer.averageRating.toFixed(1)} stars` : "Rate this post"}
+                  >
+                    {offer.averageRating && (
+                      <span className="text-xs font-semibold">{offer.averageRating.toFixed(1)}</span>
+                    )}
+                    <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    {offer.ratingCount && offer.ratingCount > 0 && (
+                      <span className="text-xs font-medium">
+                        {offer.ratingCount} {offer.ratingCount === 1 ? 'rating' : 'ratings'}
+                      </span>
+                    )}
+                  </button>
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -322,6 +405,12 @@ const Home = () => {
                         {offer.pinned && (
                           <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded flex items-center gap-1">
                             📌 Pinned
+                          </span>
+                        )}
+                        {/* Debug: Show detailed rating info */}
+                        {(offer.ratings && offer.ratings.length > 0) && (
+                          <span className="bg-blue-50 border border-blue-200 text-blue-800 text-xs px-1 py-0.5 rounded">
+                            DEBUG: avg={offer.averageRating}, count={offer.ratingCount}, array={offer.ratings.length}
                           </span>
                         )}
                       </div>
@@ -662,6 +751,61 @@ const Home = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && postToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">Delete Post</h3>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="mb-6">
+                <p className="text-gray-700 mb-3">
+                  Are you sure you want to delete your post?
+                </p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    "{postToDelete.title}"
+                  </p>
+                </div>
+                <p className="text-sm text-red-600 mt-3 font-medium">
+                  ⚠️ This will permanently delete the post and all its replies.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={cancelDeletePost}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeletePost}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete Post
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

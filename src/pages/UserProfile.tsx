@@ -51,7 +51,7 @@ const UserProfile = () => {
   const navigate = useNavigate();
   const { userId } = useParams(); // Get userId from URL parameters
   const { user, signOut } = useAuth();
-  const { offers, replies, loading } = useOffers(); // Add loading from offers context
+  const { offers, replies, loading, deleteOffer } = useOffers(); // Add loading from offers context
   
   // State for managing which posts have replies shown
   const [showingReplies, setShowingReplies] = useState<Set<string>>(new Set());
@@ -555,6 +555,24 @@ const UserProfile = () => {
     navigate('/');
   };
 
+  const handleDeletePost = async (postId: string, postTitle: string) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${postTitle}"? This action cannot be undone.`
+    );
+    
+    if (confirmDelete) {
+      try {
+        console.log('🗑️ User deleting their own post:', postId);
+        await deleteOffer(postId);
+        console.log('✅ Post deleted successfully');
+        // Posts will automatically refresh due to real-time listener
+      } catch (error) {
+        console.error('❌ Error deleting post:', error);
+        alert('Error deleting post. Please try again.');
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white py-8">
       <div className="container mx-auto px-4">
@@ -849,10 +867,38 @@ const UserProfile = () => {
                                 )} {post.title}
                               </h4>
                               <p className="text-gray-600 text-sm mb-2 line-clamp-2">{post.description}</p>
-                              <div className="flex items-center gap-4 text-xs text-gray-500">
-                                <span>Created: {post.createdAt.toLocaleDateString()}</span>
-                                <span>{post.attendeeCount || 0} attendees</span>
-                                <span>{postReplies.length} replies</span>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4 text-xs text-gray-500">
+                                  <span>Created: {post.createdAt.toLocaleDateString()}</span>
+                                  <span>{post.attendeeCount || 0} attendees</span>
+                                  <span>{postReplies.length} replies</span>
+                                </div>
+                                
+                                {/* Edit and Delete buttons for own posts */}
+                                {isOwnProfile && (
+                                  <div className="flex gap-2">
+                                    <Link
+                                      to={`/${post.type === 'need' ? 'i-need' : 'i-offer'}?edit=${post.id}`}
+                                      className="px-2 py-1 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md transition-colors flex items-center gap-1"
+                                      title="Edit your post"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                      Edit
+                                    </Link>
+                                    <button
+                                      onClick={() => handleDeletePost(post.id, post.title)}
+                                      className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded-md transition-colors flex items-center gap-1"
+                                      title="Delete your post"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <div className="ml-4">

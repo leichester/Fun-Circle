@@ -6,6 +6,7 @@ import UserRegistration from './pages/UserRegistration';
 import UserProfile from './pages/UserProfile';
 import PostDetail from './pages/PostDetail';
 import AdminPanel from './pages/AdminPanel';
+import RatingPage from './pages/RatingPage';
 import { AuthProvider } from './contexts/FirebaseAuthContext';
 import { OffersProvider } from './contexts/FirebaseOffersContext';
 import { AdminProvider } from './contexts/AdminContext';
@@ -24,6 +25,7 @@ function App() {
               <Route path="/user-profile" element={<UserProfile />} />
               <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="/post/:postId" element={<PostDetail />} />
+              <Route path="/rate/:postId" element={<RatingPage />} />
               <Route path="/admin" element={<AdminPanel />} />
             </Routes>
           </Router>

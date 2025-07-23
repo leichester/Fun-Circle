@@ -27,6 +27,13 @@ export interface Reply {
   depth?: number; // Track nesting level
 }
 
+export interface Rating {
+  userId: string;
+  rating: number; // 1-5 stars
+  comment?: string; // Optional comment from user
+  createdAt: Date;
+}
+
 export interface Offer {
   id: string;
   title: string;
@@ -47,6 +54,9 @@ export interface Offer {
   attendeeCount?: number; // Count of attendees
   replies?: Reply[]; // Array of replies for this post
   replyCount?: number; // Count of replies
+  ratings?: Rating[]; // Array of ratings for this post
+  averageRating?: number; // Calculated average rating
+  ratingCount?: number; // Total number of ratings
   pinned?: boolean; // For admin pinned posts
   pinnedAt?: Date; // When it was pinned
   pinnedBy?: string; // Admin who pinned it
@@ -65,6 +75,7 @@ interface OffersContextType {
   addReply: (postId: string, text: string, parentReplyId?: string) => Promise<void>;
   getReplies: (postId: string) => Promise<Reply[]>;
   replies: Reply[]; // Add replies state for real-time access
+  addRating: (postId: string, rating: number, comment?: string) => Promise<void>;
 }
 
 const OffersContext = createContext<OffersContextType | undefined>(undefined);
@@ -127,6 +138,10 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
           deleted: data.deleted || false,
           deletedAt: data.deletedAt ? data.deletedAt.toDate() : undefined,
           deletedBy: data.deletedBy,
+          // Rating fields
+          ratings: data.ratings || [],
+          averageRating: data.averageRating,
+          ratingCount: data.ratingCount,
         });
       });
       
@@ -339,6 +354,64 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     }
   };
 
+  const addRating = async (postId: string, rating: number, comment?: string) => {
+    if (!user) {
+      throw new Error('User must be authenticated to rate posts');
+    }
+
+    if (rating < 1 || rating > 5) {
+      throw new Error('Rating must be between 1 and 5');
+    }
+
+    try {
+      console.log('⭐ Firestore: Adding rating to post:', postId, 'Rating:', rating, 'Comment:', comment || 'No comment');
+      
+      const postRef = doc(db, 'posts', postId);
+      const newRating: Rating = {
+        userId: user.uid,
+        rating,
+        comment: comment?.trim() || undefined, // Only store non-empty comments
+        createdAt: new Date(),
+      };
+
+      // Get current post to check if user has already rated
+      const currentPost = offers.find(offer => offer.id === postId);
+      const existingRatings = currentPost?.ratings || [];
+      
+      // Check if user has already rated this post
+      const existingRatingIndex = existingRatings.findIndex(r => r.userId === user.uid);
+      
+      let updatedRatings;
+      if (existingRatingIndex >= 0) {
+        // Update existing rating
+        updatedRatings = [...existingRatings];
+        updatedRatings[existingRatingIndex] = newRating;
+        console.log('🔄 Firestore: Updating existing rating');
+      } else {
+        // Add new rating
+        updatedRatings = [...existingRatings, newRating];
+        console.log('➕ Firestore: Adding new rating');
+      }
+
+      // Calculate average rating
+      const totalRating = updatedRatings.reduce((sum, r) => sum + r.rating, 0);
+      const averageRating = Math.round((totalRating / updatedRatings.length) * 10) / 10; // Round to 1 decimal place
+
+      // Update post with new ratings
+      await updateDoc(postRef, {
+        ratings: updatedRatings,
+        averageRating,
+        ratingCount: updatedRatings.length,
+      });
+
+      console.log('✅ Firestore: Rating added successfully. Average:', averageRating);
+      
+    } catch (error) {
+      console.error('❌ Firestore: Error adding rating:', error);
+      throw error;
+    }
+  };
+
   const getReplies = async (postId: string): Promise<Reply[]> => {
     // Filter replies for this post
     const postReplies = replies.filter(reply => reply.postId === postId);
@@ -409,6 +482,7 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     addReply,
     getReplies,
     replies, // Add replies state for real-time access
+    addRating,
   };
 
   return (
