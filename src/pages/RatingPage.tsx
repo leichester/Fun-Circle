@@ -14,6 +14,8 @@ const RatingPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [post, setPost] = useState<any>(null);
   const [isUpdatingRating, setIsUpdatingRating] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -35,10 +37,12 @@ const RatingPage = () => {
             setIsUpdatingRating(true);
           }
         }
-      } else {
-        // Post not found, redirect to home
+      } else if (offers.length > 0) {
+        // Only redirect if offers are loaded and post is still not found
+        console.log('Post not found, redirecting to home');
         navigate('/');
       }
+      // If offers.length is 0, don't redirect yet - data might still be loading
     }
   }, [postId, offers, user, navigate]);
 
@@ -56,11 +60,20 @@ const RatingPage = () => {
     setIsSubmitting(true);
 
     try {
+      // Make sure to pass the comment along with the rating
       await addRating(post.id, selectedRating, ratingComment);
-      console.log(`Rating ${selectedRating} submitted for post ${post.id}${ratingComment ? ' with comment' : ''}`);
+      console.log(`Rating ${selectedRating} submitted for post ${post.id}${ratingComment ? ' with comment: "' + ratingComment + '"' : ' (no comment)'}`);
       
-      alert(`Thank you for ${isUpdatingRating ? 'updating your rating for' : 'rating'} "${post.title}" with ${selectedRating} stars!`);
-      navigate('/');
+      const feedbackMessage = ratingComment.trim() 
+        ? `Thank you for ${isUpdatingRating ? 'updating your rating for' : 'rating'} "${post.title}" with ${selectedRating} stars and your feedback! Your comment will appear below.`
+        : `Thank you for ${isUpdatingRating ? 'updating your rating for' : 'rating'} "${post.title}" with ${selectedRating} stars!`;
+      
+      setSuccessMessage(feedbackMessage);
+      setShowSuccessModal(true);
+      
+      // Don't redirect or reload - stay on the rating page
+      // The offers context should automatically update and the page will re-render
+      setIsUpdatingRating(true); // Now this is an update for future changes
     } catch (error) {
       console.error('Error submitting rating:', error);
       alert('Error submitting rating. Please try again.');
@@ -131,7 +144,7 @@ const RatingPage = () => {
             </h3>
             <p className="text-gray-600 text-sm mb-2">{post.description}</p>
             <div className="flex items-center text-xs text-gray-500">
-              <span>Posted by: {post.userDisplayName || post.userEmail}</span>
+              <span>Posted by: {post.userDisplayName || 'Anonymous'}</span>
               {post.averageRating && (
                 <span className="ml-4 flex items-center gap-1">
                   <svg className="w-3 h-3 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
@@ -205,7 +218,9 @@ const RatingPage = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
             />
             <div className="flex justify-between items-center mt-2">
-              <p className="text-xs text-gray-500">Help others by sharing your experience</p>
+              <p className="text-xs text-gray-500">
+                {ratingComment.trim() ? 'Your feedback will be saved and displayed for others to see' : 'Help others by sharing your experience'}
+              </p>
               <p className="text-xs text-gray-400">{ratingComment.length}/500</p>
             </div>
           </div>
@@ -241,7 +256,11 @@ const RatingPage = () => {
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
-                  {isUpdatingRating ? 'Update Rating' : 'Submit Rating'}
+                  {isUpdatingRating ? (
+                    ratingComment.trim() ? 'Update Rating & Feedback' : 'Update Rating'
+                  ) : (
+                    ratingComment.trim() ? 'Submit Rating & Feedback' : 'Submit Rating'
+                  )}
                 </>
               )}
             </button>
@@ -328,9 +347,93 @@ const RatingPage = () => {
                 </div>
               </div>
             </div>
+
+            {/* User Comments Section */}
+            {post.ratings.some((rating: any) => rating.comment && rating.comment.trim() !== '') && (
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <h3 className="text-lg font-medium text-gray-800 mb-4">User Feedback</h3>
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {post.ratings
+                    .filter((rating: any) => rating.comment && rating.comment.trim() !== '')
+                    .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+                    .map((rating: any, index: number) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0">
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: rating.rating }, (_, i) => (
+                                <svg key={i} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                              ))}
+                              {Array.from({ length: 5 - rating.rating }, (_, i) => (
+                                <svg key={i} className="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-gray-800 text-sm leading-relaxed mb-2">{rating.comment}</p>
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>
+                                {rating.userDisplayName || 'Anonymous'}
+                                {rating.userId === user?.uid && (
+                                  <span className="ml-1 text-blue-600 font-medium">(You)</span>
+                                )}
+                              </span>
+                              {rating.createdAt && (
+                                <span>
+                                  {new Date(rating.createdAt.seconds ? rating.createdAt.seconds * 1000 : rating.createdAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 animate-in fade-in zoom-in duration-200">
+            <div className="p-6">
+              {/* Success Icon */}
+              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full">
+                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              
+              {/* Title */}
+              <h3 className="text-lg font-semibold text-gray-800 text-center mb-2">
+                {isUpdatingRating ? 'Rating Updated!' : 'Rating Submitted!'}
+              </h3>
+              
+              {/* Message */}
+              <p className="text-gray-600 text-center text-sm leading-relaxed mb-6">
+                {successMessage}
+              </p>
+              
+              {/* Action Button */}
+              <div className="flex justify-center">
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  Great!
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
