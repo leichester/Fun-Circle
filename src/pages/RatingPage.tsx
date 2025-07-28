@@ -76,7 +76,9 @@ const RatingPage = () => {
       setIsUpdatingRating(true); // Now this is an update for future changes
     } catch (error) {
       console.error('Error submitting rating:', error);
-      alert('Error submitting rating. Please try again.');
+      // Show the actual error message for debugging
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Error submitting rating: ${errorMessage}. Please try again.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -144,7 +146,7 @@ const RatingPage = () => {
             </h3>
             <p className="text-gray-600 text-sm mb-2">{post.description}</p>
             <div className="flex items-center text-xs text-gray-500">
-              <span>Posted by: {post.userDisplayName || 'Anonymous'}</span>
+              <span>Posted by: {post.userDisplayName || post.userId}</span>
               {post.averageRating && (
                 <span className="ml-4 flex items-center gap-1">
                   <svg className="w-3 h-3 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
@@ -377,7 +379,7 @@ const RatingPage = () => {
                             <p className="text-gray-800 text-sm leading-relaxed mb-2">{rating.comment}</p>
                             <div className="flex items-center justify-between text-xs text-gray-500">
                               <span>
-                                {rating.userDisplayName || 'Anonymous'}
+                                {rating.userDisplayName || rating.userId}
                                 {rating.userId === user?.uid && (
                                   <span className="ml-1 text-blue-600 font-medium">(You)</span>
                                 )}

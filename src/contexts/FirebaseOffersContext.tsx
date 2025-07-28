@@ -32,6 +32,7 @@ export interface Rating {
   rating: number; // 1-5 stars
   comment?: string; // Optional comment from user
   createdAt: Date;
+  userDisplayName?: string; // Display name of the user who rated
 }
 
 export interface Offer {
@@ -120,6 +121,7 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
           title: data.title,
           description: data.description,
           dateTime: data.dateTime,
+          endDateTime: data.endDateTime,
           price: data.price,
           online: data.online,
           location: data.location,
@@ -232,9 +234,22 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
         attendeeCount: 0,
       };
       
-      // Filter out undefined values to prevent Firestore errors
+      // Filter out undefined values and empty strings for optional fields to prevent Firestore errors
       const cleanedPostData = Object.fromEntries(
-        Object.entries(postData).filter(([_, value]) => value !== undefined)
+        Object.entries(postData).filter(([key, value]) => {
+          // Always keep these required fields even if empty
+          const requiredFields = ['title', 'description', 'type', 'online', 'userId', 'userEmail', 'createdAt', 'attendees', 'attendeeCount'];
+          if (requiredFields.includes(key)) return value !== undefined;
+          
+          // Special handling for datetime fields - keep them if they have valid values
+          const dateTimeFields = ['dateTime', 'endDateTime'];
+          if (dateTimeFields.includes(key)) {
+            return value !== undefined && value !== null && value !== '';
+          }
+          
+          // For other optional fields, filter out undefined and empty strings
+          return value !== undefined && value !== '';
+        })
       );
       
       console.log('🔥 Firestore: Cleaned post data to insert:', cleanedPostData);
@@ -258,9 +273,22 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     try {
       console.log('🔥 Firestore: Updating post with ID:', id, offerData);
       
-      // Filter out undefined values to prevent Firestore errors
+      // Filter out undefined values and empty strings for optional fields to prevent Firestore errors
       const cleanedUpdateData = Object.fromEntries(
-        Object.entries(offerData).filter(([_, value]) => value !== undefined)
+        Object.entries(offerData).filter(([key, value]) => {
+          // Always keep these required fields even if empty
+          const requiredFields = ['title', 'description', 'type', 'online'];
+          if (requiredFields.includes(key)) return value !== undefined;
+          
+          // Special handling for datetime fields - keep them if they have valid values
+          const dateTimeFields = ['dateTime', 'endDateTime'];
+          if (dateTimeFields.includes(key)) {
+            return value !== undefined && value !== null && value !== '';
+          }
+          
+          // For other optional fields, filter out undefined and empty strings
+          return value !== undefined && value !== '';
+        })
       );
       
       console.log('🔥 Firestore: Cleaned update data:', cleanedUpdateData);
@@ -370,9 +398,14 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
       const newRating: Rating = {
         userId: user.uid,
         rating,
-        comment: comment?.trim() || undefined, // Only store non-empty comments
         createdAt: new Date(),
+        userDisplayName: user.displayName || user.email || 'Anonymous',
       };
+
+      // Only add comment field if it has a non-empty value
+      if (comment && comment.trim()) {
+        newRating.comment = comment.trim();
+      }
 
       // Get current post to check if user has already rated
       const currentPost = offers.find(offer => offer.id === postId);
