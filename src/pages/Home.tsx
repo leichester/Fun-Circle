@@ -23,6 +23,9 @@ const Home = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [postToDelete, setPostToDelete] = useState<{id: string, title: string} | null>(null);
 
+  // State for search functionality
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Function to determine post status
   const getPostStatus = (post: any) => {
     if (!post.dateTime) {
@@ -120,6 +123,18 @@ const Home = () => {
     
     return organizeReplies(postReplies);
   }, [allReplies, organizeReplies]);
+
+  // Filter offers based on search query
+  const filteredOffers = offers.filter(offer => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    const title = offer.title?.toLowerCase() || '';
+    const description = offer.description?.toLowerCase() || '';
+    const username = offer.userDisplayName?.toLowerCase() || offer.userEmail?.toLowerCase() || '';
+    
+    return title.includes(query) || description.includes(query) || username.includes(query);
+  });
 
   // Debug logging
   console.log('🏠 Home: Rendering with', offers.length, 'offers, loading:', loading, 'user:', user ? 'logged in' : 'not logged in');
@@ -342,6 +357,55 @@ const Home = () => {
           {t('title')}
         </h1>
         
+        {/* Search Bar */}
+        <div className="w-full max-w-2xl mb-8">
+          <div className="relative">
+            <div className="flex items-center">
+              <div className="relative w-full">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setSearchQuery('');
+                    }
+                  }}
+                  placeholder="Search by title, description, or username..."
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    title="Clear search"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* Search Results Count */}
+            {searchQuery.trim() && (
+              <div className="absolute top-full left-0 right-0 mt-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 z-10 shadow-sm">
+                {filteredOffers.length === 0 
+                  ? 'No posts found matching your search'
+                  : `Found ${filteredOffers.length} post${filteredOffers.length !== 1 ? 's' : ''} matching "${searchQuery}"`
+                }
+                <span className="ml-2 text-blue-500 text-xs">(Press Escape to clear)</span>
+              </div>
+            )}
+          </div>
+        </div>
+        
         {/* Navigation Menu - Full Width, Evenly Distributed */}
         <div className="w-full max-w-4xl mb-12 flex justify-center">
           <Navigation />
@@ -361,9 +425,9 @@ const Home = () => {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-600">Loading posts...</p>
             </div>
-          ) : offers.length > 0 ? (
+          ) : filteredOffers.length > 0 ? (
             <div className="space-y-4">
-              {offers.map((offer) => {
+              {filteredOffers.map((offer) => {
                 const postStatus = getPostStatus(offer);
                 return (
                 <div
@@ -718,35 +782,55 @@ const Home = () => {
               <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
-              <h3 className="text-xl font-medium text-gray-500 mb-2">No posts yet</h3>
-              <p className="text-gray-400 mb-6">Be the first to share what you're offering or what you need!</p>
-              {/* Show action buttons for registered users, sign up prompt for non-registered */}
-              {user ? (
-                <div className="flex gap-4 justify-center">
-                  <Link
-                    to="/i-offer"
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Create an Offer
-                  </Link>
-                  <Link
-                    to="/i-need"
-                    className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Post a Need
-                  </Link>
+              
+              {/* Show different messages based on whether it's a search result or no posts */}
+              {searchQuery.trim() ? (
+                <div>
+                  <h3 className="text-xl font-medium text-gray-500 mb-2">No matching posts found</h3>
+                  <p className="text-gray-400 mb-6">
+                    No posts match your search for "{searchQuery}". Try different keywords or{' '}
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="text-blue-600 hover:text-blue-800 underline"
+                    >
+                      clear your search
+                    </button>
+                    .
+                  </p>
                 </div>
-              ) : (
-                <div className="text-center">
-                  <p className="text-gray-500 mb-4">Sign up to create posts and join the community!</p>
-                  <Link
-                    to="/user-registration"
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Sign Up / Sign In
-                  </Link>
+              ) : offers.length === 0 ? (
+                <div>
+                  <h3 className="text-xl font-medium text-gray-500 mb-2">No posts yet</h3>
+                  <p className="text-gray-400 mb-6">Be the first to share what you're offering or what you need!</p>
+                  {/* Show action buttons for registered users, sign up prompt for non-registered */}
+                  {user ? (
+                    <div className="flex gap-4 justify-center">
+                      <Link
+                        to="/i-offer"
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Create an Offer
+                      </Link>
+                      <Link
+                        to="/i-need"
+                        className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        Post a Need
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-gray-500 mb-4">Sign up to create posts and join the community!</p>
+                      <Link
+                        to="/user-registration"
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Sign Up / Sign In
+                      </Link>
+                    </div>
+                  )}
                 </div>
-              )}
+              ) : null}
             </div>
           )}
         </div>
