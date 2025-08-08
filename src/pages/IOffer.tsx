@@ -384,7 +384,7 @@ const IOffer = () => {
             {/* Start Date and Time */}
             <div>
               <label htmlFor="dateTime" className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date and Time *
+                {t('iOffer.form.startDateTime')} *
               </label>
               <input
                 type="datetime-local"
@@ -401,7 +401,7 @@ const IOffer = () => {
             {/* End Date and Time - Optional */}
             <div>
               <label htmlFor="endDateTime" className="block text-sm font-medium text-gray-700 mb-2">
-                End Date and Time (Optional)
+                {t('iOffer.form.endDateTime')} ({t('iOffer.form.optional')})
               </label>
               <input
                 type="datetime-local"

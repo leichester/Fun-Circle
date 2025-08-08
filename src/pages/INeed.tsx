@@ -231,7 +231,7 @@ const INeed = () => {
             {/* Start Date and Time - Optional */}
             <div>
               <label htmlFor="dateTime" className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date and Time ({t('iNeed.form.optional')})
+                {t('iNeed.form.startDateTime')} ({t('iNeed.form.optional')})
               </label>
               <input
                 type="datetime-local"
@@ -247,7 +247,7 @@ const INeed = () => {
             {/* End Date and Time - Optional */}
             <div>
               <label htmlFor="endDateTime" className="block text-sm font-medium text-gray-700 mb-2">
-                End Date and Time ({t('iNeed.form.optional')})
+                {t('iNeed.form.endDateTime')} ({t('iNeed.form.optional')})
               </label>
               <input
                 type="datetime-local"

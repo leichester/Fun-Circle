@@ -1,0 +1,79 @@
+{
+  "title": "趣味圈",
+  "language": "语言",
+  "auth": {
+    "privacyNotice": "在使用此应用之前，您可以查看 Fun Circle 的",
+    "privacyPolicy": "隐私政策",
+    "termsOfService": "服务条款",
+    "and": "和"
+  },
+  "navigation": {
+    "home": "首页",
+    "iOffer": "我提供",
+    "iNeed": "我需要",
+    "sampleEvent": "用户注册"
+  },
+  "content": {
+    "welcome": "欢迎来到趣味圈",
+    "description": "在您的社区中联系、分享和发现机会"
+  },
+  "offers": {
+    "online": "在线",
+    "new": "新",
+    "iOfferLabel": "[我提供]",
+    "iNeedLabel": "[我需要]"
+  },
+  "iOffer": {
+    "title": "创建服务",
+    "subtitle": "分享您可以为社区提供的服务",
+    "form": {
+      "title": "标题",
+      "titlePlaceholder": "输入您服务的标题",
+      "description": "描述",
+      "descriptionPlaceholder": "详细描述您提供的服务",
+      "dateTime": "日期和时间",
+      "startDateTime": "开始日期和时间",
+      "endDateTime": "结束日期和时间",
+      "optional": "可选",
+      "price": "价格",
+      "pricePlaceholder": "输入价格（例如：50美元 或 免费）",
+      "online": "在线",
+      "onlineLabel": "这是在线服务（虚拟/远程）",
+      "location": "地点",
+      "locationPlaceholder": "输入具体位置或地址",
+      "city": "城市",
+      "cityPlaceholder": "输入城市",
+      "state": "州/省",
+      "statePlaceholder": "选择一个州",
+      "submit": "提交",
+      "cancel": "取消"
+    }
+  },
+  "iNeed": {
+    "title": "创建请求",
+    "subtitle": "分享您需要社区帮助的内容",
+    "form": {
+      "title": "标题",
+      "titlePlaceholder": "输入您需要帮助的内容",
+      "description": "描述",
+      "descriptionPlaceholder": "详细描述您的需求",
+      "dateTime": "日期和时间",
+      "startDateTime": "开始日期和时间",
+      "endDateTime": "结束日期和时间",
+      "optional": "可选",
+      "price": "预算",
+      "pricePlaceholder": "输入您的预算（例如：50美元 或 免费）",
+      "online": "在线",
+      "onlineLabel": "这可以在线完成（虚拟/远程）",
+      "locationSection": "位置偏好",
+      "location": "地点",
+      "locationPlaceholder": "输入首选位置或地址",
+      "city": "城市",
+      "cityPlaceholder": "输入城市",
+      "state": "州/省",
+      "statePlaceholder": "输入州或地区",
+      "submit": "提交",
+      "cancel": "取消"
+    }
+  }
+}

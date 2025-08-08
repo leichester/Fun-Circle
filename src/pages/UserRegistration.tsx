@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/FirebaseAuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const UserRegistration = () => {
+  const { t } = useTranslation();
   const { signUp, signIn, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   
@@ -254,6 +256,27 @@ const UserRegistration = () => {
             </svg>
             Continue with Google
           </button>
+        </div>
+
+        {/* Privacy Policy Notice */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-500 leading-relaxed">
+            {t('auth.privacyNotice')}{' '}
+            <Link 
+              to="/privacy-policy" 
+              className="text-blue-600 hover:text-blue-700 underline"
+            >
+              {t('auth.privacyPolicy')}
+            </Link>
+            {' '}{t('auth.and')}{' '}
+            <Link 
+              to="/terms-of-service" 
+              className="text-blue-600 hover:text-blue-700 underline"
+            >
+              {t('auth.termsOfService')}
+            </Link>
+            .
+          </p>
         </div>
 
         <div className="mt-6 text-center">

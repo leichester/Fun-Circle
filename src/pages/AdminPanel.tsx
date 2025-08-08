@@ -4,6 +4,7 @@ import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useNavigate } from 'react-router-dom';
 import { getDocs, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { deleteExpiredPosts, getExpiredPostCount } from '../utils/expiredPostCleanup';
 
 interface User {
   uid: string;
@@ -33,6 +34,11 @@ const AdminPanel = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'users' | 'admins'>('posts');
+  
+  // Expired posts management state
+  const [expiredPostCount, setExpiredPostCount] = useState<number>(0);
+  const [isCleaningExpiredPosts, setIsCleaningExpiredPosts] = useState(false);
+  const [lastCleanupResult, setLastCleanupResult] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -184,6 +190,87 @@ const AdminPanel = () => {
     }
   };
 
+  // Expired posts management functions
+  const loadExpiredPostCount = async () => {
+    try {
+      const count = await getExpiredPostCount();
+      setExpiredPostCount(count);
+    } catch (error) {
+      console.error('Error loading expired post count:', error);
+    }
+  };
+
+  const handleDeleteExpiredPosts = async () => {
+    if (!hasPermission('delete_posts')) {
+      alert('You do not have permission to delete posts');
+      return;
+    }
+
+    // First show how many posts will be deleted
+    const count = await getExpiredPostCount();
+    if (count === 0) {
+      alert('No expired posts found!');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${count} expired posts? This action cannot be undone.`
+    );
+    
+    if (confirmDelete) {
+      setIsCleaningExpiredPosts(true);
+      try {
+        const result = await deleteExpiredPosts(false);
+        
+        if (result.deletedCount > 0) {
+          setLastCleanupResult(`Successfully deleted ${result.deletedCount} expired posts`);
+          alert(`Successfully deleted ${result.deletedCount} expired posts!`);
+          
+          // Refresh expired post count
+          loadExpiredPostCount();
+        } else {
+          setLastCleanupResult('No expired posts found to delete');
+          alert('No expired posts found to delete');
+        }
+        
+        if (result.errors.length > 0) {
+          console.error('Errors during cleanup:', result.errors);
+          setLastCleanupResult(`Deleted ${result.deletedCount} posts with ${result.errors.length} errors (check console)`);
+        }
+        
+      } catch (error) {
+        console.error('Error cleaning expired posts:', error);
+        setLastCleanupResult(`Error: ${error}`);
+        alert(`Error cleaning expired posts: ${error}`);
+      } finally {
+        setIsCleaningExpiredPosts(false);
+      }
+    }
+  };
+
+  const handlePreviewExpiredPosts = async () => {
+    try {
+      const result = await deleteExpiredPosts(true); // Dry run
+      
+      if (result.expiredPosts.length === 0) {
+        alert('No expired posts found!');
+      } else {
+        const postList = result.expiredPosts.join('\n- ');
+        alert(`Found ${result.expiredPosts.length} expired posts:\n\n- ${postList}`);
+      }
+    } catch (error) {
+      console.error('Error previewing expired posts:', error);
+      alert(`Error previewing expired posts: ${error}`);
+    }
+  };
+
+  // Load expired post count when posts tab is active
+  useEffect(() => {
+    if (activeTab === 'posts' && hasPermission('delete_posts')) {
+      loadExpiredPostCount();
+    }
+  }, [activeTab, hasPermission]);
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -251,6 +338,59 @@ const AdminPanel = () => {
             {activeTab === 'posts' && (
               <div>
                 <h2 className="text-xl font-semibold mb-4">Posts Management</h2>
+                
+                {/* Expired Posts Management Section */}
+                {hasPermission('delete_posts') && (
+                  <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                    <h3 className="text-lg font-medium text-orange-800 mb-3">🗑️ Expired Posts Management</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-orange-700">
+                          {expiredPostCount > 0 
+                            ? `Found ${expiredPostCount} expired posts` 
+                            : 'No expired posts found'
+                          }
+                        </span>
+                        <button
+                          onClick={loadExpiredPostCount}
+                          className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded hover:bg-orange-200 transition-colors"
+                        >
+                          🔄 Refresh Count
+                        </button>
+                      </div>
+                      
+                      {lastCleanupResult && (
+                        <div className="text-sm text-green-700 bg-green-50 p-2 rounded border border-green-200">
+                          Last cleanup: {lastCleanupResult}
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handlePreviewExpiredPosts}
+                          className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition-colors"
+                        >
+                          👀 Preview Expired Posts
+                        </button>
+                        
+                        {expiredPostCount > 0 && (
+                          <button
+                            onClick={handleDeleteExpiredPosts}
+                            disabled={isCleaningExpiredPosts}
+                            className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 transition-colors disabled:opacity-50"
+                          >
+                            {isCleaningExpiredPosts ? '⏳ Deleting...' : '🗑️ Delete All Expired'}
+                          </button>
+                        )}
+                      </div>
+                      
+                      <p className="text-xs text-gray-600">
+                        Expired posts are automatically determined by their end date or 1 month after start date if no end date is set.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
                 {offersLoading ? (
                   <p>Loading posts...</p>
                 ) : (

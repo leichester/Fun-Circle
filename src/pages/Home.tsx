@@ -136,37 +136,8 @@ const Home = () => {
     return title.includes(query) || description.includes(query) || username.includes(query);
   });
 
-  // Debug logging
+  // Debug logging (minimal)
   console.log('🏠 Home: Rendering with', offers.length, 'offers, loading:', loading, 'user:', user ? 'logged in' : 'not logged in');
-  
-  // Debug ALL posts to see rating data
-  console.log('🌟 ALL POSTS DEBUG:');
-  offers.forEach((offer, index) => {
-    console.log(`Post ${index + 1}:`, {
-      title: offer.title,
-      id: offer.id,
-      averageRating: offer.averageRating,
-      ratingCount: offer.ratingCount,
-      ratingsArray: offer.ratings,
-      hasRatingsArray: !!offer.ratings,
-      ratingsLength: offer.ratings ? offer.ratings.length : 'N/A'
-    });
-  });
-  
-  // Debug rating data for posts that should have ratings
-  offers.forEach(offer => {
-    if (offer.averageRating || offer.ratingCount || (offer.ratings && offer.ratings.length > 0)) {
-      console.log('🌟 Post with rating data:', {
-        title: offer.title,
-        id: offer.id,
-        averageRating: offer.averageRating,
-        ratingCount: offer.ratingCount,
-        ratingsArrayLength: offer.ratings ? offer.ratings.length : 0,
-        averageRatingType: typeof offer.averageRating,
-        ratingCountType: typeof offer.ratingCount
-      });
-    }
-  });
 
   const handleSignOut = async () => {
     try {
@@ -460,21 +431,15 @@ const Home = () => {
                         <Link to={`/post/${offer.id}`}>
                           <h3 className="text-xl font-semibold text-gray-800 hover:text-blue-600 transition-colors cursor-pointer">
                             {offer.type === 'need' ? (
-                              <span className="text-green-600 font-bold">[I NEED]</span>
+                              <span className="text-green-600 font-bold">{t('offers.iNeedLabel')}</span>
                             ) : (
-                              <span className="text-blue-600 font-bold">[I OFFER]</span>
+                              <span className="text-blue-600 font-bold">{t('offers.iOfferLabel')}</span>
                             )} {offer.title}
                           </h3>
                         </Link>
                         {offer.pinned && (
                           <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded flex items-center gap-1">
                             📌 Pinned
-                          </span>
-                        )}
-                        {/* Debug: Show detailed rating info */}
-                        {(offer.ratings && offer.ratings.length > 0) && (
-                          <span className="bg-blue-50 border border-blue-200 text-blue-800 text-xs px-1 py-0.5 rounded">
-                            DEBUG: avg={offer.averageRating}, count={offer.ratingCount}, array={offer.ratings.length}
                           </span>
                         )}
                       </div>

@@ -11,9 +11,17 @@
     "welcome": "Welcome to Fun Circle",
     "description": "Connect, share, and discover opportunities in your community"
   },
+  "auth": {
+    "privacyNotice": "Before using this app, you can review Fun Circle's",
+    "privacyPolicy": "privacy policy",
+    "termsOfService": "terms of service",
+    "and": "and"
+  },
   "offers": {
     "online": "Online",
-    "new": "New"
+    "new": "New",
+    "iOfferLabel": "[I OFFER]",
+    "iNeedLabel": "[I NEED]"
   },
   "iOffer": {
     "title": "Create an Offer",
@@ -24,6 +32,9 @@
       "description": "Description",
       "descriptionPlaceholder": "Describe what you're offering in detail",
       "dateTime": "Date and Time",
+      "startDateTime": "Start Date and Time",
+      "endDateTime": "End Date and Time",
+      "optional": "Optional",
       "price": "Price",
       "pricePlaceholder": "Enter price (e.g., $50 or Free)",
       "online": "Online",
@@ -47,6 +58,8 @@
       "description": "Description",
       "descriptionPlaceholder": "Describe what you need in detail",
       "dateTime": "Date & Time",
+      "startDateTime": "Start Date and Time",
+      "endDateTime": "End Date and Time",
       "optional": "Optional",
       "price": "Budget",
       "pricePlaceholder": "Enter your budget (e.g., $50 or Free)",

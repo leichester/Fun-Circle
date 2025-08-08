@@ -137,8 +137,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('🔥 Firebase Auth: Signing in with Google...');
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      console.log('🔥 Firebase Auth: GoogleAuthProvider created');
+      
+      // Add additional scopes if needed
+      provider.addScope('email');
+      provider.addScope('profile');
+      
+      console.log('🔥 Firebase Auth: About to call signInWithPopup...');
+      
+      // Try popup first, fallback to redirect if it fails
+      let result;
+      try {
+        result = await signInWithPopup(auth, provider);
+      } catch (popupError: any) {
+        console.log('🔥 Firebase Auth: Popup failed, trying redirect...', popupError);
+        // Import redirect methods dynamically
+        const { signInWithRedirect, getRedirectResult } = await import('firebase/auth');
+        
+        // Check if we're returning from a redirect
+        const redirectResult = await getRedirectResult(auth);
+        if (redirectResult) {
+          result = redirectResult;
+        } else {
+          // Start redirect flow
+          await signInWithRedirect(auth, provider);
+          return; // Function will end here, redirect will handle the rest
+        }
+      }
+      
+      console.log('🔥 Firebase Auth: signInWithPopup successful:', result);
+      
       const user = result.user;
+      console.log('🔥 Firebase Auth: User object:', user);
       
       // Check if this is a new user and store their data in Firestore
       const { doc, setDoc, getDoc } = await import('firebase/firestore');
@@ -168,7 +198,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('✅ Firebase Auth: Google sign in successful');
     } catch (error: any) {
       console.error('❌ Firebase Auth: Google sign in error:', error);
-      throw new Error(error.message);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Full error object:', error);
+      throw new Error(`Google sign-in failed: ${error.message}`);
     }
   };
 

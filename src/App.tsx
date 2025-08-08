@@ -7,6 +7,8 @@ import UserProfile from './pages/UserProfile';
 import PostDetail from './pages/PostDetail';
 import AdminPanel from './pages/AdminPanel';
 import RatingPage from './pages/RatingPage';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import { AuthProvider } from './contexts/FirebaseAuthContext';
 import { OffersProvider } from './contexts/FirebaseOffersContext';
 import { AdminProvider } from './contexts/AdminContext';
@@ -27,6 +29,8 @@ function App() {
               <Route path="/post/:postId" element={<PostDetail />} />
               <Route path="/rate/:postId" element={<RatingPage />} />
               <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
             </Routes>
           </Router>
         </OffersProvider>

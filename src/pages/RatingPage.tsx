@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/FirebaseAuthContext';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 
 const RatingPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { postId } = useParams<{ postId: string }>();
   const { user } = useAuth();
@@ -139,9 +141,9 @@ const RatingPage = () => {
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h3 className="font-medium text-gray-800 mb-2">
               {post.type === 'need' ? (
-                <span className="text-green-600 font-bold">[I NEED]</span>
+                <span className="text-green-600 font-bold">{t('offers.iNeedLabel')}</span>
               ) : (
-                <span className="text-blue-600 font-bold">[I OFFER]</span>
+                <span className="text-blue-600 font-bold">{t('offers.iOfferLabel')}</span>
               )} {post.title}
             </h3>
             <p className="text-gray-600 text-sm mb-2">{post.description}</p>

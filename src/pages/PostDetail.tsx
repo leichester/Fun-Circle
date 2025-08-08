@@ -1,10 +1,12 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const PostDetail = () => {
+  const { t } = useTranslation();
   const { postId } = useParams();
   const navigate = useNavigate();
   const { offers, loading, toggleAttendance, addReply, replies: allReplies } = useOffers();
@@ -176,9 +178,9 @@ const PostDetail = () => {
             <div className="mb-6">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
                 {post.type === 'need' ? (
-                  <span className="text-red-600 font-bold">[I NEED]</span>
+                  <span className="text-red-600 font-bold">{t('offers.iNeedLabel')}</span>
                 ) : (
-                  <span className="text-blue-600 font-bold">[I OFFER]</span>
+                  <span className="text-blue-600 font-bold">{t('offers.iOfferLabel')}</span>
                 )} {post.title}
               </h2>
               

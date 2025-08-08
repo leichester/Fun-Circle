@@ -1,11 +1,12 @@
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useAuth } from '../contexts/FirebaseAuthContext';
 import { useOffers } from '../contexts/FirebaseOffersContext';
+import { useAdmin } from '../contexts/AdminContext';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { compressImage, validateImageFile, createImagePreview, revokeImagePreview, DEFAULT_PROFILE_PIC_OPTIONS } from '../utils/imageUtils';
 
 // ReplyComponent for displaying nested replies
@@ -50,10 +51,12 @@ const ReplyComponent = ({ reply, depth = 0 }: { reply: any, depth?: number }) =>
 };
 
 const UserProfile = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { userId } = useParams(); // Get userId from URL parameters
   const { user, signOut } = useAuth();
   const { offers, replies, loading, deleteOffer } = useOffers(); // Add loading from offers context
+  const { isAdmin, isSuperAdmin } = useAdmin();
   
   // State for managing which posts have replies shown
   const [showingReplies, setShowingReplies] = useState<Set<string>>(new Set());
@@ -1032,12 +1035,14 @@ const UserProfile = () => {
                       >
                         Fix User Data (Debug)
                       </button>
-                      <button
-                        onClick={fixAllUsersData}
-                        className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors text-xs"
-                      >
-                        Fix All Users (Admin)
-                      </button>
+                      {(isAdmin || isSuperAdmin) && (
+                        <button
+                          onClick={fixAllUsersData}
+                          className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors text-xs"
+                        >
+                          Fix All Users (Admin)
+                        </button>
+                      )}
                     </>
                     )}
                   </div>
@@ -1258,9 +1263,9 @@ const UserProfile = () => {
                             <div className="flex-1">
                               <h4 className="font-semibold text-gray-800 mb-1 hover:text-blue-600 transition-colors">
                                 {post.type === 'need' ? (
-                                  <span className="text-green-600 font-bold">[I NEED]</span>
+                                  <span className="text-green-600 font-bold">{t('offers.iNeedLabel')}</span>
                                 ) : (
-                                  <span className="text-blue-600 font-bold">[I OFFER]</span>
+                                  <span className="text-blue-600 font-bold">{t('offers.iOfferLabel')}</span>
                                 )} {post.title}
                               </h4>
                               <p className="text-gray-600 text-sm mb-2 line-clamp-2">{post.description}</p>

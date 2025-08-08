@@ -7,6 +7,7 @@ const LanguageSwitcher = () => {
     { code: 'en', name: 'EN' },
     { code: 'es', name: 'ES' },
     { code: 'fr', name: 'FR' },
+    { code: 'zh', name: '中文' },
   ];
 
   const changeLanguage = (lng: string) => {
