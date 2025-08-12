@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from './FirebaseAuthContext';
+import { ImageData } from '../utils/base64ImageStorage';
 
 export interface Reply {
   id: string;
@@ -51,6 +52,8 @@ export interface Offer {
   userId: string;
   userEmail: string;
   userDisplayName?: string;
+  imageUrl?: string; // Legacy field for Firebase Storage (keep for compatibility)
+  imageData?: ImageData; // New field for base64 storage
   attendees?: string[]; // Array of user IDs who clicked attend
   attendeeCount?: number; // Count of attendees
   replies?: Reply[]; // Array of replies for this post
@@ -140,6 +143,9 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
           deleted: data.deleted || false,
           deletedAt: data.deletedAt ? data.deletedAt.toDate() : undefined,
           deletedBy: data.deletedBy,
+          // Image fields
+          imageUrl: data.imageUrl,
+          imageData: data.imageData,
           // Rating fields
           ratings: data.ratings || [],
           averageRating: data.averageRating,

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useOffers } from '../contexts/FirebaseOffersContext';
@@ -15,6 +15,32 @@ const PostDetail = () => {
   const [replyText, setReplyText] = useState('');
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{id: string, username: string} | null>(null);
+  const [isImageFullscreen, setIsImageFullscreen] = useState(false);
+
+  const handleImageDoubleClick = () => {
+    console.log('Image double-clicked, opening fullscreen...');
+    setIsImageFullscreen(true);
+  };
+
+  const handleCloseFullscreen = () => {
+    console.log('Closing fullscreen image...');
+    setIsImageFullscreen(false);
+  };
+
+  // Handle ESC key to close fullscreen
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isImageFullscreen) {
+        console.log('ESC key pressed, closing fullscreen...');
+        handleCloseFullscreen();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isImageFullscreen]);
 
   // Find the specific post
   const post = offers.find(offer => offer.id === postId);
@@ -207,6 +233,87 @@ const PostDetail = () => {
                 {post.description}
               </p>
             </div>
+
+            {/* Post Image */}
+            {(post.imageUrl || post.imageData) && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Photo</h3>
+                {/* Debug info for development */}
+                {import.meta.env.DEV && (
+                  <div className="bg-gray-100 p-2 text-xs mb-2 rounded">
+                    Debug: imageUrl={post.imageUrl ? 'present' : 'none'}, 
+                    imageData={post.imageData ? 'present' : 'none'},
+                    base64={post.imageData?.base64 ? 'present' : 'none'}
+                  </div>
+                )}
+                <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm relative group">
+                  <img
+                    src={post.imageData?.base64 || post.imageUrl}
+                    alt="Post image"
+                    className="w-full h-auto max-h-96 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105 select-none"
+                    onDoubleClick={handleImageDoubleClick}
+                    onClick={() => console.log('Image clicked (single)')}
+                    onError={(e) => {
+                      console.error('Image failed to load:', {
+                        src: (e.target as HTMLImageElement).src,
+                        imageData: post.imageData,
+                        imageUrl: post.imageUrl
+                      });
+                      // Hide image if it fails to load
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                    onLoad={() => {
+                      console.log('Image loaded successfully:', {
+                        hasImageData: !!post.imageData,
+                        hasImageUrl: !!post.imageUrl,
+                        hasBase64: !!post.imageData?.base64
+                      });
+                    }}
+                  />
+                  {/* Hover overlay with double-click hint */}
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center pointer-events-none">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white bg-opacity-90 px-3 py-1 rounded-full text-sm text-gray-700">
+                      Double-click to enlarge
+                    </div>
+                  </div>
+                </div>
+                {post.imageData && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    📱 Optimized for free plan • {Math.round(post.imageData.size / 1024)}KB
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Fullscreen Image Modal */}
+            {isImageFullscreen && (post.imageUrl || post.imageData) && (
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+                onClick={handleCloseFullscreen}
+              >
+                <div className="relative max-w-full max-h-full">
+                  <img
+                    src={post.imageData?.base64 || post.imageUrl}
+                    alt="Post image - Full size"
+                    className="max-w-full max-h-full object-contain"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  {/* Close button */}
+                  <button
+                    onClick={handleCloseFullscreen}
+                    className="absolute top-4 right-4 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-70 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  {/* Instructions */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
+                    Click anywhere to close • ESC key
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Post Details */}
             <div className="mb-8">

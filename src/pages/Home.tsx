@@ -446,6 +446,24 @@ const Home = () => {
                       <p className="text-gray-600 mb-3 line-clamp-2">
                         {offer.description}
                       </p>
+                      
+                      {/* Image indicator - show if post has image */}
+                      {(offer.imageUrl || offer.imageData) && (
+                        <div className="mb-3">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-sm text-blue-700">📷 Has photo</span>
+                            {offer.imageData && (
+                              <span className="text-xs text-blue-600">
+                                ({Math.round(offer.imageData.size / 1024)}KB)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="flex items-center gap-2 mb-3 text-sm text-gray-700">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

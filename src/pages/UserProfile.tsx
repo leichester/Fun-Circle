@@ -1269,6 +1269,27 @@ const UserProfile = () => {
                                 )} {post.title}
                               </h4>
                               <p className="text-gray-600 text-sm mb-2 line-clamp-2">{post.description}</p>
+                              
+                              {/* Post Image */}
+                              {(post.imageUrl || post.imageData) && (
+                                <div className="mb-2">
+                                  <img
+                                    src={post.imageData?.base64 || post.imageUrl}
+                                    alt="Post image"
+                                    className="w-full h-32 object-cover rounded border border-gray-200"
+                                    onError={(e) => {
+                                      // Hide image if it fails to load
+                                      (e.target as HTMLElement).style.display = 'none';
+                                    }}
+                                  />
+                                  {post.imageData && (
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      📱 {Math.round(post.imageData.size / 1024)}KB
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                              
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4 text-xs text-gray-500">
                                   <span>Created: {post.createdAt.toLocaleDateString()}</span>

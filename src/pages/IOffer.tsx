@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
+import { compressImageToBase64, validateImageForBase64, ImageData } from '../utils/base64ImageStorage';
 
 const IOffer = () => {
   const { t } = useTranslation();
@@ -58,6 +59,12 @@ const IOffer = () => {
     city: '',
     state: ''
   });
+
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageData, setImageData] = useState<ImageData | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [errors, setErrors] = useState({
     location: '',
@@ -250,7 +257,59 @@ const IOffer = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Image handling functions
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    const validationError = validateImageForBase64(file);
+    if (validationError && !validationError.includes('compressed')) {
+      alert(validationError);
+      return;
+    }
+
+    setSelectedImage(file);
+    setUploadingImage(true);
+
+    try {
+      // Show immediate preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // Compress to base64 for storage
+      const compressed = await compressImageToBase64(file);
+      setImageData(compressed);
+      
+      console.log('✅ Image compressed:', {
+        originalSize: Math.round(file.size / 1024) + 'KB',
+        compressedSize: Math.round(compressed.size / 1024) + 'KB',
+        filename: compressed.filename
+      });
+      
+    } catch (error) {
+      console.error('❌ Image compression failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process image';
+      alert(errorMessage);
+      removeImage();
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setImageData(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     console.log('Submit clicked, form data:', formData);
@@ -282,33 +341,39 @@ const IOffer = () => {
     
     console.log('All validations passed, processing offer...');
     
-    const offerData = {
-      title: formData.title,
-      description: formData.description,
-      dateTime: formData.dateTime,
-      endDateTime: formData.endDateTime || undefined,
-      price: formData.price,
-      online: formData.online,
-      location: formData.online ? undefined : formData.location,
-      city: formData.online ? undefined : formData.city,
-      state: formData.online ? undefined : formData.state,
-      type: 'offer' as const,
-    };
+    try {
+      const offerData = {
+        title: formData.title,
+        description: formData.description,
+        dateTime: formData.dateTime,
+        endDateTime: formData.endDateTime || undefined,
+        price: formData.price,
+        online: formData.online,
+        location: formData.online ? undefined : formData.location,
+        city: formData.online ? undefined : formData.city,
+        state: formData.online ? undefined : formData.state,
+        type: 'offer' as const,
+        imageData: imageData // Store base64 image data instead of URL
+      };
 
-    if (isEditing && editId) {
-      // Update existing offer
-      updateOffer(editId, offerData);
-      console.log('Offer updated, navigating to post detail...');
-      setSuccessMessage('Your offer has been updated successfully!');
-      setSuccessAction('updated');
-      setShowSuccessModal(true);
-    } else {
-      // Add new offer
-      addOffer(offerData);
-      console.log('Offer added, navigating to home...');
-      setSuccessMessage('Your offer has been submitted successfully!');
-      setSuccessAction('created');
-      setShowSuccessModal(true);
+      if (isEditing && editId) {
+        // Update existing offer
+        updateOffer(editId, offerData);
+        console.log('Offer updated, navigating to post detail...');
+        setSuccessMessage('Your offer has been updated successfully!');
+        setSuccessAction('updated');
+        setShowSuccessModal(true);
+      } else {
+        // Add new offer
+        addOffer(offerData);
+        console.log('Offer added, navigating to home...');
+        setSuccessMessage('Your offer has been submitted successfully!');
+        setSuccessAction('created');
+        setShowSuccessModal(true);
+      }
+    } catch (error) {
+      console.error('Error submitting offer:', error);
+      alert('Failed to submit offer. Please try again.');
     }
   };
 
@@ -379,6 +444,81 @@ const IOffer = () => {
                 placeholder={t('iOffer.form.descriptionPlaceholder')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+            </div>
+
+            {/* Image Upload */}
+            <div>
+              <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-2">
+                Add Photo (Optional)
+              </label>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                <p className="text-sm text-blue-800">
+                  📱 <strong>Free Plan Mode:</strong> Images are compressed and stored efficiently. 
+                  For full-resolution storage, upgrade to Firebase Blaze plan.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  id="image"
+                  name="image"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  ref={fileInputRef}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="flex items-center justify-center w-full px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadingImage ? (
+                    <>
+                      <svg className="animate-spin w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Choose Photo
+                    </>
+                  )}
+                </button>
+                
+                {imagePreview && (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+                
+                {selectedImage && imageData && (
+                  <div className="bg-green-50 border border-green-200 rounded p-2">
+                    <p className="text-sm text-green-800">
+                      ✅ <strong>{selectedImage.name}</strong><br/>
+                      Original: {Math.round(selectedImage.size / 1024)}KB → Optimized: {Math.round(imageData.size / 1024)}KB
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Start Date and Time */}
@@ -529,14 +669,26 @@ const IOffer = () => {
             <div className="flex gap-4 pt-6">
               <button
                 type="submit"
-                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                disabled={uploadingImage}
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                {isEditing ? 'Update Offer' : t('iOffer.form.submit')}
+                {uploadingImage ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Uploading...
+                  </>
+                ) : (
+                  isEditing ? 'Update Offer' : t('iOffer.form.submit')
+                )}
               </button>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="flex-1 bg-gray-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-600 transition-colors"
+                disabled={uploadingImage}
+                className="flex-1 bg-gray-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {t('iOffer.form.cancel')}
               </button>
