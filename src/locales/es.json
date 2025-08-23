@@ -75,5 +75,30 @@
       "submit": "Enviar",
       "cancel": "Cancelar"
     }
+  },
+  "footer": {
+    "about": {
+      "title": "Acerca de Fun Circle",
+      "description": "Fun Circle es una plataforma comunitaria donde las personas pueden compartir lo que tienen para ofrecer y lo que necesitan. Conecta con tus vecinos, comparte recursos y construye comunidades más fuertes juntos."
+    },
+    "quickLinks": {
+      "title": "Enlaces Rápidos",
+      "aboutUs": "Acerca de Nosotros",
+      "contactUs": "Contáctanos",
+      "communityGuidelines": "Pautas de la Comunidad"
+    },
+    "legal": {
+      "title": "Legal",
+      "termsOfService": "Términos de Servicio",
+      "privacyPolicy": "Política de Privacidad",
+      "cookiePolicy": "Política de Cookies"
+    },
+    "contact": {
+      "title": "Ponte en Contacto",
+      "description": "¿Tienes preguntas o comentarios?",
+      "email": "hello@funcircle.com",
+      "followUs": "Síguenos"
+    },
+    "copyright": "Todos los derechos reservados."
   }
 }

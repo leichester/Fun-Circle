@@ -1,5 +1,5 @@
 {
-  "title": "趣味圈",
+  "title": "趣趣圈",
   "language": "语言",
   "auth": {
     "privacyNotice": "在使用此应用之前，您可以查看 Fun Circle 的",
@@ -14,7 +14,7 @@
     "sampleEvent": "用户注册"
   },
   "content": {
-    "welcome": "欢迎来到趣味圈",
+    "welcome": "欢迎来到趣趣圈",
     "description": "在您的社区中联系、分享和发现机会"
   },
   "offers": {
@@ -75,5 +75,30 @@
       "submit": "提交",
       "cancel": "取消"
     }
+  },
+  "footer": {
+    "about": {
+      "title": "关于趣趣圈",
+      "description": "趣趣圈是一个社区平台，人们可以在这里分享他们能提供的和需要的。与邻居联系，分享资源，共同建设更强大的社区。"
+    },
+    "quickLinks": {
+      "title": "快速链接",
+      "aboutUs": "关于我们",
+      "contactUs": "联系我们",
+      "communityGuidelines": "社区指南"
+    },
+    "legal": {
+      "title": "法律条款",
+      "termsOfService": "服务条款",
+      "privacyPolicy": "隐私政策",
+      "cookiePolicy": "Cookie政策"
+    },
+    "contact": {
+      "title": "联系我们",
+      "description": "有问题或反馈吗？",
+      "email": "hello@funcircle.com",
+      "followUs": "关注我们"
+    },
+    "copyright": "版权所有。"
   }
 }

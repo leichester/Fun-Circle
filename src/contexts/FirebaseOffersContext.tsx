@@ -15,6 +15,7 @@ import {
 import { db } from '../lib/firebase';
 import { useAuth } from './FirebaseAuthContext';
 import { ImageData } from '../utils/base64ImageStorage';
+import { scheduleAutomaticCleanup } from '../utils/imageCleanup';
 
 export interface Reply {
   id: string;
@@ -54,6 +55,9 @@ export interface Offer {
   userDisplayName?: string;
   imageUrl?: string; // Legacy field for Firebase Storage (keep for compatibility)
   imageData?: ImageData; // New field for base64 storage
+  imageExpired?: boolean; // Flag for expired images
+  imageExpiredAt?: Date; // When image was removed
+  imageExpiredReason?: string; // Reason for removal
   attendees?: string[]; // Array of user IDs who clicked attend
   attendeeCount?: number; // Count of attendees
   replies?: Reply[]; // Array of replies for this post
@@ -146,6 +150,9 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
           // Image fields
           imageUrl: data.imageUrl,
           imageData: data.imageData,
+          imageExpired: data.imageExpired || false,
+          imageExpiredAt: data.imageExpiredAt ? data.imageExpiredAt.toDate() : undefined,
+          imageExpiredReason: data.imageExpiredReason,
           // Rating fields
           ratings: data.ratings || [],
           averageRating: data.averageRating,
@@ -185,6 +192,26 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
       unsubscribe();
     };
   }, []); // Empty dependency array - this should only run once
+
+  // Set up automatic image cleanup for expired posts
+  useEffect(() => {
+    if (offers.length === 0) return; // Wait for posts to load
+    
+    const updatePostFunction = async (postId: string, updateData: any) => {
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        ...updateData,
+        imageExpiredAt: Timestamp.fromDate(updateData.imageExpiredAt)
+      });
+    };
+    
+    const getPostsFunction = () => offers;
+    
+    // Start automatic cleanup (runs every 24 hours)
+    const stopCleanup = scheduleAutomaticCleanup(getPostsFunction, updatePostFunction, 24);
+    
+    return stopCleanup; // Cleanup function
+  }, [offers]);
 
   // Set up replies listener
   useEffect(() => {

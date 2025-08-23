@@ -7,6 +7,10 @@ import UserProfile from './pages/UserProfile';
 import PostDetail from './pages/PostDetail';
 import AdminPanel from './pages/AdminPanel';
 import RatingPage from './pages/RatingPage';
+import About from './pages/About';
+import Contact from './pages/Contact';
+import CommunityGuidelines from './pages/CommunityGuidelines';
+import CookiePolicy from './pages/CookiePolicy';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import { AuthProvider } from './contexts/FirebaseAuthContext';
@@ -29,6 +33,10 @@ function App() {
               <Route path="/post/:postId" element={<PostDetail />} />
               <Route path="/rate/:postId" element={<RatingPage />} />
               <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/community-guidelines" element={<CommunityGuidelines />} />
+              <Route path="/cookie-policy" element={<CookiePolicy />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
             </Routes>
