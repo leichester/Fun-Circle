@@ -182,7 +182,7 @@ const INeed = () => {
         description: formData.description,
         online: formData.online,
         type: 'need' as const,
-        imageData: imageData // Store base64 image data instead of URL
+        imageData: imageData || undefined // Convert null to undefined to match interface
       };
 
       // Only add optional fields if they have values

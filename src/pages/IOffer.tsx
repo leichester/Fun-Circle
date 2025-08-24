@@ -353,7 +353,7 @@ const IOffer = () => {
         city: formData.online ? undefined : formData.city,
         state: formData.online ? undefined : formData.state,
         type: 'offer' as const,
-        imageData: imageData // Store base64 image data instead of URL
+        imageData: imageData || undefined // Convert null to undefined to match interface
       };
 
       if (isEditing && editId) {
