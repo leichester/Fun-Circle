@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
+import { useAdmin } from '../contexts/AdminContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const PostDetail = () => {
@@ -11,6 +12,7 @@ const PostDetail = () => {
   const navigate = useNavigate();
   const { offers, loading, toggleAttendance, addReply, replies: allReplies } = useOffers();
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   
   const [replyText, setReplyText] = useState('');
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -287,7 +289,7 @@ const PostDetail = () => {
                     </div>
                   </div>
                 </div>
-                {post.imageData && (
+                {post.imageData && isAdmin && (
                   <p className="text-xs text-gray-500 mt-2">
                     📱 Optimized for free plan • {Math.round(post.imageData.size / 1024)}KB
                   </p>
