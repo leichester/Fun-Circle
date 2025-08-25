@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -23,12 +23,41 @@ const Home = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [postToDelete, setPostToDelete] = useState<{id: string, title: string} | null>(null);
 
+  // State for image preview modal
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{src: string, alt: string} | null>(null);
+
   // State for search functionality
   const [searchQuery, setSearchQuery] = useState('');
 
   // State for pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
+
+  // Image modal functions
+  const openImageModal = (imageSrc: string, imageAlt: string) => {
+    setSelectedImage({ src: imageSrc, alt: imageAlt });
+    setShowImageModal(true);
+  };
+
+  const closeImageModal = () => {
+    setShowImageModal(false);
+    setSelectedImage(null);
+  };
+
+  // Handle ESC key to close image modal
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showImageModal) {
+        closeImageModal();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showImageModal]);
 
   // Function to determine post status
   const getPostStatus = (post: any) => {
@@ -480,11 +509,17 @@ const Home = () => {
                         </div>
                       ) : (offer.imageUrl || offer.imageData) && (
                         <div className="mb-3">
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2">
+                          <div 
+                            className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors"
+                            onClick={() => openImageModal(
+                              offer.imageData?.base64 || offer.imageUrl || '',
+                              `Photo for ${offer.title}`
+                            )}
+                          >
                             <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            <span className="text-sm text-blue-700">📷 Has photo</span>
+                            <span className="text-sm text-blue-700">📷 Has photo (click to view)</span>
                             {offer.imageData && isAdmin && (
                               <span className="text-xs text-blue-600">
                                 ({Math.round(offer.imageData.size / 1024)}KB)
@@ -945,6 +980,36 @@ const Home = () => {
                   Delete Post
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Preview Modal */}
+      {showImageModal && selectedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="relative max-w-4xl max-h-full w-full h-full flex items-center justify-center">
+            {/* Close button */}
+            <button
+              onClick={closeImageModal}
+              className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-75 transition-all"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Image */}
+            <img
+              src={selectedImage.src}
+              alt={selectedImage.alt}
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              onClick={closeImageModal}
+            />
+            
+            {/* Click anywhere to close hint */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
+              Click anywhere to close
             </div>
           </div>
         </div>
