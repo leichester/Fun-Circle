@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -23,10 +23,6 @@ const Home = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [postToDelete, setPostToDelete] = useState<{id: string, title: string} | null>(null);
 
-  // State for image preview modal
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<{src: string, alt: string} | null>(null);
-
   // State for search functionality
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -34,30 +30,16 @@ const Home = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
 
-  // Image modal functions
-  const openImageModal = (imageSrc: string, imageAlt: string) => {
-    setSelectedImage({ src: imageSrc, alt: imageAlt });
-    setShowImageModal(true);
-  };
+  // State for filters
+  const [filterType, setFilterType] = useState<'all' | 'offer' | 'need'>('all');
+  const [filterDate, setFilterDate] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [filterLocation, setFilterLocation] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired' | 'soon' | 'ongoing' | 'completed'>('all');
+  const [filterRating, setFilterRating] = useState<'all' | '4+' | '3+' | '2+' | '1+'>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title' | 'rating'>('newest');
 
-  const closeImageModal = () => {
-    setShowImageModal(false);
-    setSelectedImage(null);
-  };
-
-  // Handle ESC key to close image modal
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && showImageModal) {
-        closeImageModal();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [showImageModal]);
+  // State for mobile CTA
+  const [showMobileCTA, setShowMobileCTA] = useState(false);
 
   // Function to determine post status
   const getPostStatus = (post: any) => {
@@ -157,27 +139,110 @@ const Home = () => {
     return organizeReplies(postReplies);
   }, [allReplies, organizeReplies]);
 
-  // Filter offers based on search query
+  // Filter offers based on search query and filters
   const filteredOffers = offers.filter(offer => {
-    if (!searchQuery.trim()) return true;
+    // Search query filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const title = offer.title?.toLowerCase() || '';
+      const description = offer.description?.toLowerCase() || '';
+      const username = offer.userDisplayName?.toLowerCase() || offer.userEmail?.toLowerCase() || '';
+      
+      if (!title.includes(query) && !description.includes(query) && !username.includes(query)) {
+        return false;
+      }
+    }
     
-    const query = searchQuery.toLowerCase();
-    const title = offer.title?.toLowerCase() || '';
-    const description = offer.description?.toLowerCase() || '';
-    const username = offer.userDisplayName?.toLowerCase() || offer.userEmail?.toLowerCase() || '';
+    // Type filter
+    if (filterType !== 'all') {
+      if (filterType === 'offer' && offer.type !== 'offer') return false;
+      if (filterType === 'need' && offer.type !== 'need') return false;
+    }
     
-    return title.includes(query) || description.includes(query) || username.includes(query);
+    // Date filter
+    if (filterDate !== 'all' && offer.createdAt) {
+      const postDate = offer.createdAt.toDate ? offer.createdAt.toDate() : new Date(offer.createdAt);
+      const now = new Date();
+      const timeDiff = now.getTime() - postDate.getTime();
+      const daysDiff = timeDiff / (1000 * 3600 * 24);
+      
+      if (filterDate === 'today' && daysDiff > 1) return false;
+      if (filterDate === 'week' && daysDiff > 7) return false;
+      if (filterDate === 'month' && daysDiff > 30) return false;
+    }
+    
+    // Status filter
+    if (filterStatus !== 'all') {
+      const postStatus = getPostStatus(offer);
+      const statusText = postStatus.text.toLowerCase();
+      
+      if (filterStatus === 'active' && statusText !== 'active') return false;
+      if (filterStatus === 'expired' && statusText !== 'expired') return false;
+      if (filterStatus === 'soon' && statusText !== 'soon') return false;
+      if (filterStatus === 'ongoing' && statusText !== 'ongoing') return false;
+      if (filterStatus === 'completed' && statusText !== 'completed') return false;
+    }
+    
+    // Rating filter
+    if (filterRating !== 'all' && offer.averageRating !== undefined) {
+      const rating = offer.averageRating;
+      if (filterRating === '4+' && rating < 4) return false;
+      if (filterRating === '3+' && rating < 3) return false;
+      if (filterRating === '2+' && rating < 2) return false;
+      if (filterRating === '1+' && rating < 1) return false;
+    } else if (filterRating !== 'all' && offer.averageRating === undefined) {
+      // If rating filter is applied but post has no rating, exclude it
+      return false;
+    }
+    
+    // Location filter
+    if (filterLocation.trim()) {
+      const locationQuery = filterLocation.toLowerCase();
+      const location = offer.location?.toLowerCase() || '';
+      const city = offer.city?.toLowerCase() || '';
+      const state = offer.state?.toLowerCase() || '';
+      
+      if (!location.includes(locationQuery) && !city.includes(locationQuery) && !state.includes(locationQuery)) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+
+  // Sort filtered offers
+  const sortedOffers = [...filteredOffers].sort((a, b) => {
+    if (sortBy === 'newest') {
+      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+      return dateB.getTime() - dateA.getTime();
+    } else if (sortBy === 'oldest') {
+      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+      return dateA.getTime() - dateB.getTime();
+    } else if (sortBy === 'title') {
+      return (a.title || '').localeCompare(b.title || '');
+    } else if (sortBy === 'rating') {
+      const ratingA = a.averageRating || 0;
+      const ratingB = b.averageRating || 0;
+      return ratingB - ratingA; // Highest rating first
+    }
+    return 0;
   });
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredOffers.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedOffers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedOffers = filteredOffers.slice(startIndex, endIndex);
+  const paginatedOffers = sortedOffers.slice(startIndex, endIndex);
 
-  // Reset to page 1 when search query changes
+  // Reset to page 1 when search query or filters change
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = () => {
     setCurrentPage(1);
   };
 
@@ -367,11 +432,16 @@ const Home = () => {
       </div>
 
       {/* Main Content - Top Aligned */}
-      <div className="pt-20 flex flex-col items-center px-8">
+      <div className="pt-16 md:pt-20 flex flex-col items-center px-4 md:px-8">
         {/* Fun Circle Title - Centered and Big */}
-        <h1 className="text-6xl md:text-8xl font-bold text-gray-800 mb-16 text-center">
+        <h1 className="text-6xl md:text-8xl font-bold text-gray-800 mb-4 text-center">
           {t('title')}
         </h1>
+        
+        {/* Tagline - Cursive Style */}
+        <p className="text-2xl md:text-3xl text-gray-600 mb-16 text-center italic font-light">
+          "Connect, share, and discover opportunities in your community"
+        </p>
         
         {/* Search Bar */}
         <div className="w-full max-w-2xl mb-8">
@@ -412,11 +482,11 @@ const Home = () => {
             {/* Search Results Count and Pagination Info */}
             {searchQuery.trim() && (
               <div className="absolute top-full left-0 right-0 mt-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 z-10 shadow-sm">
-                {filteredOffers.length === 0 
+                {sortedOffers.length === 0 
                   ? 'No posts found matching your search'
-                  : `Found ${filteredOffers.length} post${filteredOffers.length !== 1 ? 's' : ''} matching "${searchQuery}"`
+                  : `Found ${sortedOffers.length} post${sortedOffers.length !== 1 ? 's' : ''} matching "${searchQuery}"`
                 }
-                {filteredOffers.length > itemsPerPage && (
+                {sortedOffers.length > itemsPerPage && (
                   <span className="ml-2 text-blue-600">
                     (Showing page {currentPage} of {totalPages})
                   </span>
@@ -428,39 +498,197 @@ const Home = () => {
         </div>
         
         {/* Navigation Menu - Full Width, Evenly Distributed */}
-        <div className="w-full max-w-4xl mb-12 flex justify-center">
-          <Navigation />
+        <div className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 py-6 px-8 rounded-2xl shadow-lg mb-12 relative">
+          <div className="max-w-4xl mx-auto">
+            <Navigation />
+          </div>
         </div>
         
-        {/* Welcome Content - Centered */}
-        <div className="text-center mt-8">
-          <p className="text-xl text-gray-600 max-w-2xl">
-            {t('content.description')}
-          </p>
-        </div>
-
         {/* Submitted Offers Section */}
         <div className="w-full max-w-6xl mt-16">
+          {/* Filter Bar */}
+          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 md:p-6 mb-8">
+            <div className="flex flex-col gap-4">
+              {/* Filter Section Label */}
+              <div className="flex items-center gap-2 text-gray-700 font-medium">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                </svg>
+                <span>Filters:</span>
+              </div>
+
+              {/* Filters Container */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4 w-full">
+                {/* Type Filter */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-600">Category</label>
+                  <select
+                    value={filterType}
+                    onChange={(e) => {
+                      setFilterType(e.target.value as 'all' | 'offer' | 'need');
+                      handleFilterChange();
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                  >
+                    <option value="all">All Posts</option>
+                    <option value="offer">I OFFER</option>
+                    <option value="need">I NEED</option>
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-600">Status</label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => {
+                      setFilterStatus(e.target.value as 'all' | 'active' | 'expired' | 'soon' | 'ongoing' | 'completed');
+                      handleFilterChange();
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="soon">Soon</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+
+                {/* Rating Filter */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-600">Rating</label>
+                  <select
+                    value={filterRating}
+                    onChange={(e) => {
+                      setFilterRating(e.target.value as 'all' | '4+' | '3+' | '2+' | '1+');
+                      handleFilterChange();
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                  >
+                    <option value="all">Any Rating</option>
+                    <option value="4+">⭐ 4+ Stars</option>
+                    <option value="3+">⭐ 3+ Stars</option>
+                    <option value="2+">⭐ 2+ Stars</option>
+                    <option value="1+">⭐ 1+ Stars</option>
+                  </select>
+                </div>
+
+                {/* Date Filter */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-600">Date Posted</label>
+                  <select
+                    value={filterDate}
+                    onChange={(e) => {
+                      setFilterDate(e.target.value as 'all' | 'today' | 'week' | 'month');
+                      handleFilterChange();
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                  </select>
+                </div>
+
+                {/* Location Filter */}
+                <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1">
+                  <label className="text-sm font-medium text-gray-600">Location</label>
+                  <input
+                    type="text"
+                    value={filterLocation}
+                    onChange={(e) => {
+                      setFilterLocation(e.target.value);
+                      handleFilterChange();
+                    }}
+                    placeholder="Filter by city, state..."
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Sort and Clear Section */}
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 items-stretch sm:items-end pt-4 border-t border-gray-200">
+                {/* Sort By */}
+                <div className="flex flex-col gap-1 flex-1 sm:flex-initial">
+                  <label className="text-sm font-medium text-gray-600">Sort By</label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => {
+                      setSortBy(e.target.value as 'newest' | 'oldest' | 'title' | 'rating');
+                      handleFilterChange();
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm w-full sm:min-w-[140px]"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="title">Title A-Z</option>
+                    <option value="rating">Highest Rated</option>
+                  </select>
+                </div>
+
+                {/* Clear Filters Button */}
+                <button
+                  onClick={() => {
+                    setFilterType('all');
+                    setFilterDate('all');
+                    setFilterLocation('');
+                    setFilterStatus('all');
+                    setFilterRating('all');
+                    setSortBy('newest');
+                    handleFilterChange();
+                  }}
+                  className="px-4 py-2 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Clear All
+                </button>
+              </div>
+            </div>
+
+            {/* Results Count */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                Showing {paginatedOffers.length} of {sortedOffers.length} posts
+                {searchQuery && (
+                  <span className="ml-1">
+                    matching "{searchQuery}"
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-600">Loading posts...</p>
             </div>
           ) : paginatedOffers.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-4 md:space-y-6">
               {paginatedOffers.map((offer) => {
                 const postStatus = getPostStatus(offer);
                 return (
                 <div
                   key={offer.id}
-                  className={`relative bg-white border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow ${
-                    offer.pinned ? 'border-yellow-400 bg-gradient-to-r from-yellow-50 to-white' : 'border-gray-200'
+                  className={`relative rounded-xl p-4 md:p-8 shadow-md hover:shadow-lg transition-all duration-300 ${
+                    offer.type === 'need' 
+                      ? 'bg-gradient-to-br from-green-50 to-green-25 border border-green-200' 
+                      : 'bg-gradient-to-br from-blue-50 to-blue-25 border border-blue-200'
+                  } ${
+                    offer.pinned ? 'ring-2 ring-yellow-400 bg-gradient-to-r from-yellow-50 to-white' : ''
                   }`}
+                  style={{
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+                  }}
                 >
                   {/* Rating Button - Top Right Corner */}
                   <button
                     onClick={() => handleRatePost(offer.id, offer.title, offer.userId)}
-                    className="absolute top-4 right-4 flex items-center gap-1 text-gray-600 hover:text-yellow-600 transition-colors bg-transparent border-none outline-none p-0 m-0"
+                    className="absolute top-3 right-3 md:top-4 md:right-4 flex items-center gap-1 text-gray-600 hover:text-yellow-600 transition-colors bg-transparent border-none outline-none p-0 m-0"
                     title={offer.averageRating ? `Current rating: ${offer.averageRating.toFixed(1)} stars` : "Rate this post"}
                   >
                     {offer.averageRating && (
@@ -470,25 +698,32 @@ const Home = () => {
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
                     {offer.ratingCount && offer.ratingCount > 0 && (
-                      <span className="text-xs font-medium">
+                      <span className="text-xs font-medium hidden sm:inline">
                         {offer.ratingCount} {offer.ratingCount === 1 ? 'rating' : 'ratings'}
                       </span>
                     )}
                   </button>
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Link to={`/post/${offer.id}`}>
-                          <h3 className="text-xl font-semibold text-gray-800 hover:text-blue-600 transition-colors cursor-pointer">
-                            {offer.type === 'need' ? (
-                              <span className="text-green-600 font-bold">{t('offers.iNeedLabel')}</span>
-                            ) : (
-                              <span className="text-blue-600 font-bold">{t('offers.iOfferLabel')}</span>
-                            )} {offer.title}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+                        {/* Type Badge - Prominent pill-shaped badge */}
+                        <span className={`px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-semibold flex-shrink-0 w-fit ${
+                          offer.type === 'need' 
+                            ? 'bg-green-500 text-white shadow-green-200 shadow-md' 
+                            : 'bg-blue-500 text-white shadow-blue-200 shadow-md'
+                        }`}>
+                          {offer.type === 'need' ? t('offers.iNeedLabel') : t('offers.iOfferLabel')}
+                        </span>
+                        
+                        {/* Title - Stacked on mobile, same line on tablet+ */}
+                        <Link to={`/post/${offer.id}`} className="flex-1">
+                          <h3 className="text-lg md:text-xl font-semibold text-gray-800 hover:text-blue-600 transition-colors cursor-pointer leading-tight">
+                            {offer.title}
                           </h3>
                         </Link>
+                        
                         {offer.pinned && (
-                          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded flex items-center gap-1">
+                          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 md:px-3 md:py-1 rounded-full flex items-center gap-1 font-medium border border-yellow-300 flex-shrink-0 w-fit">
                             📌 Pinned
                           </span>
                         )}
@@ -509,18 +744,12 @@ const Home = () => {
                         </div>
                       ) : (offer.imageUrl || offer.imageData) && (
                         <div className="mb-3">
-                          <div 
-                            className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors"
-                            onClick={() => openImageModal(
-                              offer.imageData?.base64 || offer.imageUrl || '',
-                              `Photo for ${offer.title}`
-                            )}
-                          >
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2">
                             <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            <span className="text-sm text-blue-700">📷 Has photo (click to view)</span>
-                            {offer.imageData && isAdmin && (
+                            <span className="text-sm text-blue-700">📷 Has photo</span>
+                            {offer.imageData && (
                               <span className="text-xs text-blue-600">
                                 ({Math.round(offer.imageData.size / 1024)}KB)
                               </span>
@@ -556,19 +785,16 @@ const Home = () => {
                               </svg>
                               Edit
                             </Link>
-                            {/* Only show user delete button if not admin (admin has their own delete button below) */}
-                            {!isAdmin && (
-                              <button
-                                onClick={() => handleDeleteOwnPost(offer.id)}
-                                className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded-md transition-colors flex items-center gap-1"
-                                title="Delete your post"
-                              >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                                Delete
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleDeleteOwnPost(offer.id)}
+                              className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded-md transition-colors flex items-center gap-1"
+                              title="Delete your post"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Delete
+                            </button>
                           </div>
                         )}
                       </div>
@@ -818,8 +1044,22 @@ const Home = () => {
                         </div>
                       )}
                     </div>
-                    <div className="mt-4 md:mt-0 md:ml-6">
-                      <span className={`inline-block text-xs px-2 py-1 rounded-full ${postStatus.color}`}>
+                    <div className="mt-6 md:mt-0 md:ml-6 flex flex-col items-end gap-2">
+                      {/* Status Badge - Enhanced pill shape with better contrast */}
+                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium shadow-md ${
+                        postStatus.text === 'Active' ? 'bg-green-500 text-white' :
+                        postStatus.text === 'Soon' ? 'bg-yellow-500 text-white' :
+                        postStatus.text === 'Ongoing' ? 'bg-blue-500 text-white' :
+                        postStatus.text === 'Completed' ? 'bg-gray-500 text-white' :
+                        'bg-gray-400 text-white'
+                      }`}>
+                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                          postStatus.text === 'Active' ? 'bg-green-300' :
+                          postStatus.text === 'Soon' ? 'bg-yellow-300' :
+                          postStatus.text === 'Ongoing' ? 'bg-blue-300' :
+                          postStatus.text === 'Completed' ? 'bg-gray-300' :
+                          'bg-gray-300'
+                        }`}></div>
                         {postStatus.text}
                       </span>
                     </div>
@@ -887,7 +1127,7 @@ const Home = () => {
         </div>
 
         {/* Pagination Component */}
-        {filteredOffers.length > itemsPerPage && (
+        {sortedOffers.length > itemsPerPage && (
           <div className="flex justify-center items-center mt-8 space-x-2">
             {/* Previous Button */}
             <button
@@ -983,36 +1223,6 @@ const Home = () => {
                   Delete Post
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Image Preview Modal */}
-      {showImageModal && selectedImage && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="relative max-w-4xl max-h-full w-full h-full flex items-center justify-center">
-            {/* Close button */}
-            <button
-              onClick={closeImageModal}
-              className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-75 transition-all"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            
-            {/* Image */}
-            <img
-              src={selectedImage.src}
-              alt={selectedImage.alt}
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              onClick={closeImageModal}
-            />
-            
-            {/* Click anywhere to close hint */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
-              Click anywhere to close
             </div>
           </div>
         </div>
@@ -1116,6 +1326,57 @@ const Home = () => {
           </div>
         </div>
       </footer>
+
+      {/* Sticky Mobile CTA Button */}
+      <div className="fixed bottom-6 right-6 md:hidden z-50">
+        <div className="relative">
+          {/* Main + Post Button */}
+          <button
+            onClick={() => setShowMobileCTA(!showMobileCTA)}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group"
+          >
+            <svg 
+              className={`w-6 h-6 transition-transform duration-300 ${showMobileCTA ? 'rotate-45' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+
+          {/* Expandable Menu */}
+          <div className={`absolute bottom-16 right-0 transition-all duration-300 ${
+            showMobileCTA ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+          }`}>
+            <div className="flex flex-col gap-3">
+              {/* I OFFER Button */}
+              <Link
+                to="/i-offer"
+                onClick={() => setShowMobileCTA(false)}
+                className="bg-blue-500 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 min-w-fit whitespace-nowrap"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span className="font-medium">I OFFER</span>
+              </Link>
+
+              {/* I NEED Button */}
+              <Link
+                to="/i-need"
+                onClick={() => setShowMobileCTA(false)}
+                className="bg-green-500 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 min-w-fit whitespace-nowrap"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span className="font-medium">I NEED</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

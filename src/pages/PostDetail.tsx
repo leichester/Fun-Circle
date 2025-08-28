@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
-import { useAdmin } from '../contexts/AdminContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const PostDetail = () => {
@@ -12,7 +11,6 @@ const PostDetail = () => {
   const navigate = useNavigate();
   const { offers, loading, toggleAttendance, addReply, replies: allReplies } = useOffers();
   const { user } = useAuth();
-  const { isAdmin } = useAdmin();
   
   const [replyText, setReplyText] = useState('');
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -258,6 +256,14 @@ const PostDetail = () => {
             ) : (post.imageUrl || post.imageData) && (
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Photo</h3>
+                {/* Debug info for development */}
+                {import.meta.env.DEV && (
+                  <div className="bg-gray-100 p-2 text-xs mb-2 rounded">
+                    Debug: imageUrl={post.imageUrl ? 'present' : 'none'}, 
+                    imageData={post.imageData ? 'present' : 'none'},
+                    base64={post.imageData?.base64 ? 'present' : 'none'}
+                  </div>
+                )}
                 <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm relative group">
                   <img
                     src={post.imageData?.base64 || post.imageUrl}
@@ -289,7 +295,7 @@ const PostDetail = () => {
                     </div>
                   </div>
                 </div>
-                {post.imageData && isAdmin && (
+                {post.imageData && (
                   <p className="text-xs text-gray-500 mt-2">
                     📱 Optimized for free plan • {Math.round(post.imageData.size / 1024)}KB
                   </p>

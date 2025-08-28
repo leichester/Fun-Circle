@@ -1282,7 +1282,7 @@ const UserProfile = () => {
                                       (e.target as HTMLElement).style.display = 'none';
                                     }}
                                   />
-                                  {post.imageData && isAdmin && (
+                                  {post.imageData && (
                                     <p className="text-xs text-gray-400 mt-1">
                                       📱 {Math.round(post.imageData.size / 1024)}KB
                                     </p>
