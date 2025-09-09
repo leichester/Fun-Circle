@@ -13,5 +13,47 @@ export default defineConfig({
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }
+  },
+  build: {
+    // SEO and Performance optimizations
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.logs in production
+        drop_debugger: true
+      }
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom'],
+          'router-vendor': ['react-router-dom'],
+          'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+          'i18n-vendor': ['react-i18next', 'i18next']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000,
+    sourcemap: false // Disable source maps in production for better loading
+  },
+  // Optimize dependencies
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'firebase/app',
+      'firebase/auth', 
+      'firebase/firestore',
+      'firebase/storage',
+      'react-i18next',
+      'i18next'
+    ]
+  },
+  // Add preload directives for critical resources
+  define: {
+    // Remove development code in production
+    __DEV__: JSON.stringify(false)
   }
 })

@@ -3,9 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import Navigation from '../components/Navigation';
+import FormattedText from '../components/FormattedText';
+import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
 import { useAdmin } from '../contexts/AdminContext';
+import logoSvg from '../logo.svg';
 
 const Home = () => {
   const { t } = useTranslation();
@@ -161,7 +165,7 @@ const Home = () => {
     
     // Date filter
     if (filterDate !== 'all' && offer.createdAt) {
-      const postDate = offer.createdAt.toDate ? offer.createdAt.toDate() : new Date(offer.createdAt);
+      const postDate = (offer.createdAt as any).toDate ? (offer.createdAt as any).toDate() : new Date(offer.createdAt);
       const now = new Date();
       const timeDiff = now.getTime() - postDate.getTime();
       const daysDiff = timeDiff / (1000 * 3600 * 24);
@@ -213,12 +217,12 @@ const Home = () => {
   // Sort filtered offers
   const sortedOffers = [...filteredOffers].sort((a, b) => {
     if (sortBy === 'newest') {
-      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+      const dateA = (a.createdAt as any)?.toDate ? (a.createdAt as any).toDate() : new Date(a.createdAt || 0);
+      const dateB = (b.createdAt as any)?.toDate ? (b.createdAt as any).toDate() : new Date(b.createdAt || 0);
       return dateB.getTime() - dateA.getTime();
     } else if (sortBy === 'oldest') {
-      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+      const dateA = (a.createdAt as any)?.toDate ? (a.createdAt as any).toDate() : new Date(a.createdAt || 0);
+      const dateB = (b.createdAt as any)?.toDate ? (b.createdAt as any).toDate() : new Date(b.createdAt || 0);
       return dateA.getTime() - dateB.getTime();
     } else if (sortBy === 'title') {
       return (a.title || '').localeCompare(b.title || '');
@@ -389,8 +393,88 @@ const Home = () => {
     navigate(`/rate/${postId}`);
   };
 
+  // Structured data for HomePage
+  const homePageStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Fun Circle",
+    "url": "https://fun-circle.com",
+    "description": "Local community platform connecting neighbors through services and fun events",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://fun-circle.com/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    },
+    "sameAs": [
+      "https://www.facebook.com/funcircle",
+      "https://www.twitter.com/funcircle",
+      "https://www.linkedin.com/company/funcircle"
+    ],
+    "publisher": {
+      "@type": "Organization",
+      "@id": "https://fun-circle.com/#organization",
+      "name": "Fun Circle",
+      "url": "https://fun-circle.com",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://fun-circle.com/logo.svg"
+      }
+    },
+    "mainEntity": {
+      "@type": "ItemList",
+      "name": "Community Services & Events",
+      "description": "Available services and fun events in the Fun Circle community",
+      "numberOfItems": filteredOffers.length,
+      "itemListElement": filteredOffers.slice(0, 10).map((offer, index) => ({
+        "@type": "Service",
+        "position": index + 1,
+        "name": offer.title,
+        "description": offer.description,
+        "provider": {
+          "@type": "Person",
+          "name": offer.userDisplayName || offer.userEmail
+        },
+        "url": `https://fun-circle.com/post/${offer.id}`,
+        "serviceType": offer.type === 'offer' ? 'ServiceOffering' : 'ServiceRequest'
+      }))
+    }
+  };
+
+  const organizationStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "https://fun-circle.com/#organization",
+    "name": "Fun Circle",
+    "url": "https://fun-circle.com",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://fun-circle.com/logo.svg",
+      "width": 200,
+      "height": 200
+    },
+    "description": "Fun Circle is a local community platform that connects neighbors for skill exchange and services. Find trusted local service providers or offer your own skills to help your community.",
+    "sameAs": [
+      "https://www.facebook.com/funcircle",
+      "https://www.twitter.com/funcircle",
+      "https://www.linkedin.com/company/funcircle"
+    ],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer service",
+      "url": "https://fun-circle.com/contact"
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
+      <SEO 
+        title="Fun Circle - Local Community Services & Fun Events Platform"
+        description="Connect with your local community on Fun Circle. Find trusted services like tutoring and handyman work, discover fun events like parties and social gatherings. Offer your skills and build meaningful connections with neighbors."
+        keywords="local services, community events, fun events, skill exchange, tutoring, handyman, tech support, cleaning services, gardening, community activities, event planning, social gatherings, neighborhood services, local business directory"
+        url="https://fun-circle.com/"
+        type="website"
+        structuredData={[homePageStructuredData, organizationStructuredData]}
+      />
       {/* User Auth & Language Switcher - Top Right */}
       <div className="absolute top-6 right-8 flex items-center gap-4">
         {user ? (
@@ -433,79 +517,32 @@ const Home = () => {
 
       {/* Main Content - Top Aligned */}
       <div className="pt-16 md:pt-20 flex flex-col items-center px-4 md:px-8">
-        {/* Fun Circle Title - Centered and Big */}
-        <h1 className="text-6xl md:text-8xl font-bold text-gray-800 mb-4 text-center">
-          {t('title')}
-        </h1>
+        {/* Logo and Fun Circle Title - Horizontal Layout */}
+        <div className="flex items-center justify-center mb-4">
+          <img 
+            src={logoSvg} 
+            alt="Fun Circle Logo" 
+            className="w-16 h-16 md:w-24 md:h-24 mr-4 md:mr-6"
+          />
+          <h1 className="text-6xl md:text-8xl font-bold text-gray-800">
+            {t('title')}
+          </h1>
+        </div>
         
         {/* Tagline - Cursive Style */}
         <p className="text-2xl md:text-3xl text-gray-600 mb-16 text-center italic font-light">
           "Connect, share, and discover opportunities in your community"
         </p>
         
-        {/* Search Bar */}
-        <div className="w-full max-w-2xl mb-8">
-          <div className="relative">
-            <div className="flex items-center">
-              <div className="relative w-full">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      handleSearchChange('');
-                    }
-                  }}
-                  placeholder="Search by title, description, or username..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => handleSearchChange('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                    title="Clear search"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-            
-            {/* Search Results Count and Pagination Info */}
-            {searchQuery.trim() && (
-              <div className="absolute top-full left-0 right-0 mt-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 z-10 shadow-sm">
-                {sortedOffers.length === 0 
-                  ? 'No posts found matching your search'
-                  : `Found ${sortedOffers.length} post${sortedOffers.length !== 1 ? 's' : ''} matching "${searchQuery}"`
-                }
-                {sortedOffers.length > itemsPerPage && (
-                  <span className="ml-2 text-blue-600">
-                    (Showing page {currentPage} of {totalPages})
-                  </span>
-                )}
-                <span className="ml-2 text-blue-500 text-xs">(Press Escape to clear)</span>
-              </div>
-            )}
-          </div>
-        </div>
-        
         {/* Navigation Menu - Full Width, Evenly Distributed */}
-        <div className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 py-6 px-8 rounded-2xl shadow-lg mb-12 relative">
+        <div className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 py-6 px-8 rounded-2xl shadow-lg mb-6 relative">
           <div className="max-w-4xl mx-auto">
             <Navigation />
           </div>
         </div>
         
         {/* Submitted Offers Section */}
-        <div className="w-full max-w-6xl mt-16">
+        <div className="w-full max-w-6xl mt-6">
           {/* Filter Bar */}
           <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 md:p-6 mb-8">
             <div className="flex flex-col gap-4">
@@ -514,7 +551,61 @@ const Home = () => {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
                 </svg>
-                <span>Filters:</span>
+                <span>Search & Filters:</span>
+              </div>
+
+              {/* Search Bar */}
+              <div className="w-full mb-4">
+                <div className="relative">
+                  <div className="flex items-center">
+                    <div className="relative w-full">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            handleSearchChange('');
+                          }
+                        }}
+                        placeholder="Search by title, description, or username..."
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => handleSearchChange('')}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                          title="Clear search"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Search Results Count and Pagination Info */}
+                  {searchQuery.trim() && (
+                    <div className="absolute top-full left-0 right-0 mt-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 z-10 shadow-sm">
+                      {sortedOffers.length === 0 
+                        ? 'No posts found matching your search'
+                        : `Found ${sortedOffers.length} post${sortedOffers.length !== 1 ? 's' : ''} matching "${searchQuery}"`
+                      }
+                      {sortedOffers.length > itemsPerPage && (
+                        <span className="ml-2 text-blue-600">
+                          (Showing page {currentPage} of {totalPages})
+                        </span>
+                      )}
+                      <span className="ml-2 text-blue-500 text-xs">(Press Escape to clear)</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Filters Container */}
@@ -637,6 +728,7 @@ const Home = () => {
                     setFilterStatus('all');
                     setFilterRating('all');
                     setSortBy('newest');
+                    setSearchQuery('');
                     handleFilterChange();
                   }}
                   className="px-4 py-2 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
@@ -728,9 +820,9 @@ const Home = () => {
                           </span>
                         )}
                       </div>
-                      <p className="text-gray-600 mb-3 line-clamp-2">
-                        {offer.description}
-                      </p>
+                      <div className="text-gray-600 mb-3 line-clamp-2">
+                        <FormattedText text={offer.description} />
+                      </div>
                       
                       {/* Image indicator - show if post has image */}
                       {offer.imageExpired ? (
@@ -1377,6 +1469,9 @@ const Home = () => {
           </div>
         </div>
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

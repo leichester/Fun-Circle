@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import SEO from '../components/SEO';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
 import { compressImageToBase64, validateImageForBase64, ImageData } from '../utils/base64ImageStorage';
@@ -76,6 +77,9 @@ const IOffer = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [successAction, setSuccessAction] = useState<'created' | 'updated' | 'deleted'>('created');
+
+  // Emoji picker state
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // US states for dropdown
   const usStates = [
@@ -395,6 +399,14 @@ const IOffer = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white py-8">
+      <SEO 
+        title={isEditing ? 'Edit Your Service Offer or Event' : 'Offer Your Services or Organize Events in the Community'}
+        description={isEditing ? 'Update your service offer or event details and reach more community members.' : 'Share your skills and services with your local community, or organize fun events and social gatherings. Create an offer and help your neighbors while building connections.'}
+        keywords="offer services, organize events, share skills, local services, community help, event planning, social gatherings, earn money, service provider, freelance work, neighborhood services, community events"
+        url={`https://fun-circle.com/i-offer${isEditing ? `?edit=${editId}` : ''}`}
+        type="website"
+        noIndex={isEditing}
+      />
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -434,6 +446,94 @@ const IOffer = () => {
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
                 {t('iOffer.form.description')} *
               </label>
+              
+              {/* Formatting Toolbar */}
+              <div className="flex items-center gap-2 p-2 bg-gray-50 border border-gray-300 rounded-t-lg border-b-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const textarea = document.getElementById('description') as HTMLTextAreaElement;
+                    if (!textarea) return;
+                    
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const selectedText = formData.description.substring(start, end);
+                    
+                    let newText;
+                    if (selectedText) {
+                      newText = formData.description.substring(0, start) + `**${selectedText}**` + formData.description.substring(end);
+                    } else {
+                      newText = formData.description.substring(0, start) + '**bold text**' + formData.description.substring(end);
+                    }
+                    
+                    setFormData(prev => ({ ...prev, description: newText }));
+                    
+                    setTimeout(() => {
+                      textarea.focus();
+                      const newPos = selectedText ? start + selectedText.length + 4 : start + 11;
+                      textarea.setSelectionRange(newPos, newPos);
+                    }, 0);
+                  }}
+                  className="flex items-center gap-1 px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                  title="Bold (wrap with **text**)"
+                >
+                  <span className="font-bold">B</span>
+                </button>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="flex items-center gap-1 px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                    title="Insert emoji"
+                  >
+                    😊
+                  </button>
+
+                  {/* Emoji Picker */}
+                  {showEmojiPicker && (
+                    <div className="absolute top-full left-0 mt-1 p-3 bg-white border border-gray-300 rounded-lg shadow-lg z-10 w-64">
+                      <div className="grid grid-cols-8 gap-1 mb-2">
+                        {['😊', '😍', '🤗', '👍', '👌', '💪', '🙌', '👏', '❤️', '💙', '💚', '💛', '🧡', '💜', '💖', '✨', '🔥', '⭐', '🎉', '🎊', '🎈', '🎁', '🏆', '💯', '👎', '🆕', '🆒', '🆓', '💥', '💦', '💨', '🤔'].map((emoji, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => {
+                              const textarea = document.getElementById('description') as HTMLTextAreaElement;
+                              if (!textarea) return;
+                              
+                              const start = textarea.selectionStart;
+                              const newText = formData.description.substring(0, start) + emoji + formData.description.substring(start);
+                              
+                              setFormData(prev => ({ ...prev, description: newText }));
+                              setShowEmojiPicker(false);
+                              
+                              setTimeout(() => {
+                                textarea.focus();
+                                textarea.setSelectionRange(start + 2, start + 2);
+                              }, 0);
+                            }}
+                            className="p-1 hover:bg-gray-100 rounded text-lg"
+                            title={`Insert ${emoji}`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-xs text-gray-500 text-center">
+                        Click an emoji to insert it
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1" />
+                
+                <div className="text-xs text-gray-500">
+                  **text** for bold • emojis supported
+                </div>
+              </div>
+              
               <textarea
                 id="description"
                 name="description"
@@ -442,8 +542,16 @@ const IOffer = () => {
                 value={formData.description}
                 onChange={handleInputChange}
                 placeholder={t('iOffer.form.descriptionPlaceholder')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-t-none rounded-b-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+
+              {/* Click outside to close emoji picker */}
+              {showEmojiPicker && (
+                <div
+                  className="fixed inset-0 z-0"
+                  onClick={() => setShowEmojiPicker(false)}
+                />
+              )}
             </div>
 
             {/* Image Upload */}

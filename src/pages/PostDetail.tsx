@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useOffers } from '../contexts/FirebaseOffersContext';
 import { useAuth } from '../contexts/FirebaseAuthContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import FormattedText from '../components/FormattedText';
+import SEO from '../components/SEO';
 
 const PostDetail = () => {
   const { t } = useTranslation();
@@ -173,8 +175,49 @@ const PostDetail = () => {
     );
   }
 
+  // Create structured data for the service post
+  const postStructuredData = post ? {
+    "@context": "https://schema.org",
+    "@type": post.type === 'offer' ? "Service" : "ServiceRequest",
+    "name": post.title,
+    "description": post.description,
+    "provider": post.type === 'offer' ? {
+      "@type": "Person",
+      "name": post.userDisplayName || post.userEmail
+    } : undefined,
+    "requestedBy": post.type === 'need' ? {
+      "@type": "Person", 
+      "name": post.userDisplayName || post.userEmail
+    } : undefined,
+    "url": `https://fun-circle.com/post/${post.id}`,
+    "dateCreated": (post.createdAt as any).toDate ? (post.createdAt as any).toDate().toISOString() : new Date(post.createdAt).toISOString(),
+    "location": post.location ? {
+      "@type": "Place",
+      "name": post.location
+    } : undefined,
+    "offers": post.type === 'offer' && post.price ? {
+      "@type": "Offer",
+      "price": post.price,
+      "priceCurrency": "USD"
+    } : undefined,
+    "areaServed": {
+      "@type": "Place",
+      "name": "Local Community"
+    }
+  } : undefined;
+
   return (
     <div className="min-h-screen bg-white">
+      {post && (
+        <SEO 
+          title={`${post.title} - ${post.type === 'offer' ? 'Service Offer' : 'Service Request'}`}
+          description={`${post.description.substring(0, 150)}... - ${post.type === 'offer' ? 'Service offered' : 'Service needed'} by ${post.userDisplayName || post.userEmail} in your local community.`}
+          keywords={`${post.type === 'offer' ? 'service offer' : 'service request'}, local services, community help, ${post.title.toLowerCase()}, neighborhood services`}
+          url={`https://fun-circle.com/post/${post.id}`}
+          type="article"
+          structuredData={postStructuredData}
+        />
+      )}
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 to-white border-b">
         <div className="container mx-auto px-4 py-6">
@@ -229,9 +272,9 @@ const PostDetail = () => {
             {/* Post Description */}
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-3">Description</h3>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {post.description}
-              </p>
+              <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                <FormattedText text={post.description} />
+              </div>
             </div>
 
             {/* Post Image */}
