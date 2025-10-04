@@ -824,7 +824,7 @@ const Home = () => {
                         <FormattedText text={offer.description} />
                       </div>
                       
-                      {/* Image indicator - show if post has image */}
+                      {/* Image display - show actual image or expired indicator */}
                       {offer.imageExpired ? (
                         <div className="mb-3">
                           <div className="bg-gray-50 border border-gray-300 rounded-lg p-2 flex items-center gap-2">
@@ -836,17 +836,38 @@ const Home = () => {
                         </div>
                       ) : (offer.imageUrl || offer.imageData) && (
                         <div className="mb-3">
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2">
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="text-sm text-blue-700">📷 Has photo</span>
-                            {offer.imageData && (
-                              <span className="text-xs text-blue-600">
-                                ({Math.round(offer.imageData.size / 1024)}KB)
-                              </span>
-                            )}
-                          </div>
+                          <img
+                            src={offer.imageData ? offer.imageData.base64 : offer.imageUrl}
+                            alt={offer.title}
+                            className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                            onError={(e) => {
+                              // Hide broken images gracefully
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              // Create modal overlay for full-size image
+                              const modal = document.createElement('div');
+                              modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+                              modal.onclick = () => modal.remove();
+                              
+                              const img = document.createElement('img');
+                              img.src = offer.imageData ? offer.imageData.base64 : offer.imageUrl || '';
+                              img.className = 'max-w-full max-h-full object-contain rounded-lg';
+                              img.onclick = (e) => e.stopPropagation();
+                              
+                              const closeBtn = document.createElement('button');
+                              closeBtn.innerHTML = '×';
+                              closeBtn.className = 'absolute top-4 right-4 text-white text-4xl font-bold hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center';
+                              closeBtn.onclick = () => modal.remove();
+                              
+                              modal.appendChild(img);
+                              modal.appendChild(closeBtn);
+                              document.body.appendChild(modal);
+                            }}
+                          />
                         </div>
                       )}
                       

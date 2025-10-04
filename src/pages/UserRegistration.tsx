@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/FirebaseAuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 const UserRegistration = () => {
   const { t } = useTranslation();
@@ -11,6 +12,7 @@ const UserRegistration = () => {
   
   const [isSignUp, setIsSignUp] = useState(false); // Default to Sign In instead of Sign Up
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -59,13 +61,14 @@ const UserRegistration = () => {
         }
         
         await signUp(formData.email, formData.password, formData.fullName, formData.userId);
+        // After signup, redirect to email verification
+        navigate('/verify-email');
       } else {
         // Sign in
         await signIn(formData.email, formData.password);
+        // After signin, redirect to home (verification check will happen in RequireEmailVerification)
+        navigate('/');
       }
-      
-      // Redirect to home on success
-      navigate('/');
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -198,6 +201,17 @@ const UserRegistration = () => {
               placeholder="Enter your password"
               required
             />
+            {!isSignUp && (
+              <div className="mt-2 text-right">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium underline"
+                >
+                  Forgot your password?
+                </button>
+              </div>
+            )}
           </div>
 
           {isSignUp && (
@@ -299,6 +313,12 @@ const UserRegistration = () => {
           </p>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal 
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
     </div>
   );
 };

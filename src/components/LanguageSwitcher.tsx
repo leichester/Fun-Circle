@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
+import { saveLanguagePreference, getLanguagePreference } from '../utils/cookies';
 
 const LanguageSwitcher = () => {
   const { i18n, t } = useTranslation();
@@ -10,8 +12,20 @@ const LanguageSwitcher = () => {
     { code: 'zh', name: '中文' },
   ];
 
+  // Sync language preference on component mount (for client-side hydration)
+  useEffect(() => {
+    const savedLanguage = getLanguagePreference();
+    if (savedLanguage && savedLanguage !== i18n.language && languages.some(lang => lang.code === savedLanguage)) {
+      i18n.changeLanguage(savedLanguage);
+    }
+  }, [i18n, languages]);
+
   const changeLanguage = (lng: string) => {
+    // Change the language in i18n
     i18n.changeLanguage(lng);
+    
+    // Save the preference to cookies for future visits
+    saveLanguagePreference(lng);
   };
 
   return (

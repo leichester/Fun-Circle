@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 // Google Analytics tracking ID - replace with your actual GA4 ID
 const GA_TRACKING_ID = 'G-XXXXXXXXXX'; // Replace with your actual GA4 tracking ID
 
-// Initialize Google Analytics
+// Initialize Google Analytics with consent mode
 export const initGA = () => {
   // Add Google Analytics script
   const script1 = document.createElement('script');
@@ -12,12 +12,22 @@ export const initGA = () => {
   script1.src = `https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`;
   document.head.appendChild(script1);
 
-  // Add gtag configuration
+  // Add gtag configuration with consent mode
   const script2 = document.createElement('script');
   script2.innerHTML = 
     `window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
+    
+    // Configure consent mode (deny by default)
+    gtag('consent', 'default', {
+      analytics_storage: 'denied',
+      ad_storage: 'denied',
+      functionality_storage: 'denied',
+      personalization_storage: 'denied',
+      security_storage: 'granted'
+    });
+    
     gtag('config', '${GA_TRACKING_ID}', {
       page_title: document.title,
       page_location: window.location.href,

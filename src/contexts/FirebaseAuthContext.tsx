@@ -7,7 +7,10 @@ import {
   onAuthStateChanged,
   updateProfile,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  sendEmailVerification,
+  reload,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
@@ -18,6 +21,9 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  sendEmailVerification: () => Promise<void>;
+  reloadUser: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,6 +61,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
       
+      // Send email verification immediately after account creation
+      await sendEmailVerification(user);
+      console.log('📧 Firebase Auth: Verification email sent to:', user.email);
+      
       // Update user profile with display name and optional custom userId
       const displayName = userId ? `${fullName} (@${userId})` : fullName;
       await updateProfile(user, {
@@ -71,7 +81,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         fullName: fullName,
         userId: userId || null,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        emailVerified: false // Track verification status
       };
       
       await setDoc(doc(db, 'users', user.uid), userData);
@@ -205,6 +216,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const sendEmailVerificationToUser = async () => {
+    if (!user) {
+      throw new Error('No user is currently signed in');
+    }
+    
+    try {
+      await sendEmailVerification(user);
+      console.log('📧 Firebase Auth: Verification email sent to:', user.email);
+    } catch (error: any) {
+      console.error('❌ Firebase Auth: Send verification email error:', error);
+      throw new Error(error.message);
+    }
+  };
+
+  const reloadUser = async () => {
+    if (!user) {
+      throw new Error('No user is currently signed in');
+    }
+    
+    try {
+      await reload(user);
+      console.log('🔄 Firebase Auth: User data reloaded');
+      
+      // Update Firestore with current verification status
+      if (user.emailVerified) {
+        const { doc, updateDoc } = await import('firebase/firestore');
+        const { db } = await import('../lib/firebase');
+        
+        const userDocRef = doc(db, 'users', user.uid);
+        await updateDoc(userDocRef, {
+          emailVerified: true,
+          updatedAt: new Date()
+        });
+        console.log('✅ Firebase Auth: Email verification status updated in Firestore');
+      }
+    } catch (error: any) {
+      console.error('❌ Firebase Auth: Reload user error:', error);
+      throw new Error(error.message);
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      console.log('🔑 Firebase Auth: Password reset email sent to:', email);
+    } catch (error: any) {
+      console.error('❌ Firebase Auth: Password reset error:', error);
+      throw new Error(error.message);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -212,6 +274,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signIn,
     signOut: signOutUser,
     signInWithGoogle,
+    sendEmailVerification: sendEmailVerificationToUser,
+    reloadUser,
+    resetPassword,
   };
 
   return (

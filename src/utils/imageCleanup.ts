@@ -1,5 +1,6 @@
 // Automatic image cleanup for expired posts
 // This utility helps free up storage space by removing images from expired posts
+// Uses the same expiration logic as post status for consistency
 
 export interface CleanupStats {
   totalPostsChecked: number;
@@ -10,16 +11,31 @@ export interface CleanupStats {
 }
 
 export const isPostExpired = (post: any): boolean => {
-  if (!post.endDateTime) {
-    // If no end date, consider posts older than 30 days as expired
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return post.createdAt < thirtyDaysAgo;
+  // Use same logic as getPostStatus function for consistency
+  if (!post.dateTime) {
+    return false; // Posts without dateTime are considered active (never expire)
+  }
+
+  const postDateTime = new Date(post.dateTime);
+  const now = new Date();
+  
+  // If the start date is in the future, not expired
+  if (postDateTime > now) {
+    return false;
   }
   
-  // Check if endDateTime has passed
-  const endDate = new Date(post.endDateTime);
-  return new Date() > endDate;
+  // Start date is current or past, check end date scenarios
+  if (post.endDateTime) {
+    const endDateTime = new Date(post.endDateTime);
+    // Post is expired if end date is in the past
+    return endDateTime < now;
+  } else {
+    // No end date specified - check if it's been more than one month since start date
+    const oneMonthAfterStart = new Date(postDateTime);
+    oneMonthAfterStart.setMonth(oneMonthAfterStart.getMonth() + 1);
+    
+    return now > oneMonthAfterStart;
+  }
 };
 
 export const cleanupExpiredImages = async (
