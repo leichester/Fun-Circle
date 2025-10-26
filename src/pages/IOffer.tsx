@@ -61,11 +61,13 @@ const IOffer = () => {
     state: ''
   });
 
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageData, setImageData] = useState<ImageData | null>(null);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imagesData, setImagesData] = useState<ImageData[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const MAX_IMAGES = 5; // Maximum number of images allowed
 
   const [errors, setErrors] = useState({
     location: '',
@@ -263,51 +265,92 @@ const IOffer = () => {
 
   // Image handling functions
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file
-    const validationError = validateImageForBase64(file);
-    if (validationError && !validationError.includes('compressed')) {
-      alert(validationError);
+    const files = e.target.files;
+    if (!files || files.length === 0) {
+      console.log('⚠️ No files selected');
       return;
     }
 
-    setSelectedImage(file);
+    // Debug logging
+    console.log('📸 File input triggered:', {
+      filesCount: files.length,
+      inputMultiple: e.target.multiple,
+      currentImages: selectedImages.length,
+      maxImages: MAX_IMAGES
+    });
+
+    // Check if adding these files would exceed the maximum
+    if (selectedImages.length + files.length > MAX_IMAGES) {
+      alert(`You can only upload up to ${MAX_IMAGES} images per post.`);
+      return;
+    }
+
     setUploadingImage(true);
 
     try {
-      // Show immediate preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      const newImages: File[] = [];
+      const newPreviews: string[] = [];
+      const newImagesData: ImageData[] = [];
 
-      // Compress to base64 for storage
-      const compressed = await compressImageToBase64(file);
-      setImageData(compressed);
-      
-      console.log('✅ Image compressed:', {
-        originalSize: Math.round(file.size / 1024) + 'KB',
-        compressedSize: Math.round(compressed.size / 1024) + 'KB',
-        filename: compressed.filename
-      });
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Validate file
+        const validationError = validateImageForBase64(file);
+        if (validationError && !validationError.includes('compressed')) {
+          alert(`${file.name}: ${validationError}`);
+          continue;
+        }
+
+        // Show immediate preview
+        const preview = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.readAsDataURL(file);
+        });
+
+        // Compress to base64 for storage
+        const compressed = await compressImageToBase64(file);
+        
+        console.log(`✅ Image ${i + 1} compressed:`, {
+          originalSize: Math.round(file.size / 1024) + 'KB',
+          compressedSize: Math.round(compressed.size / 1024) + 'KB',
+          filename: compressed.filename
+        });
+
+        newImages.push(file);
+        newPreviews.push(preview);
+        newImagesData.push(compressed);
+      }
+
+      // Add new images to existing arrays
+      setSelectedImages([...selectedImages, ...newImages]);
+      setImagePreviews([...imagePreviews, ...newPreviews]);
+      setImagesData([...imagesData, ...newImagesData]);
       
     } catch (error) {
       console.error('❌ Image compression failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to process image';
       alert(errorMessage);
-      removeImage();
     } finally {
       setUploadingImage(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
-  const removeImage = () => {
-    setSelectedImage(null);
-    setImagePreview(null);
-    setImageData(null);
+  const removeImage = (index: number) => {
+    setSelectedImages(selectedImages.filter((_, i) => i !== index));
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
+    setImagesData(imagesData.filter((_, i) => i !== index));
+  };
+
+  const removeAllImages = () => {
+    setSelectedImages([]);
+    setImagePreviews([]);
+    setImagesData([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -357,7 +400,7 @@ const IOffer = () => {
         city: formData.online ? undefined : formData.city,
         state: formData.online ? undefined : formData.state,
         type: 'offer' as const,
-        imageData: imageData || undefined // Convert null to undefined to match interface
+        images: imagesData.length > 0 ? imagesData : undefined // Store multiple images
       };
 
       if (isEditing && editId) {
@@ -557,7 +600,7 @@ const IOffer = () => {
             {/* Image Upload */}
             <div>
               <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-2">
-                Add Photo (Optional)
+                Add Photos (Optional - Up to {MAX_IMAGES})
               </label>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
                 <p className="text-sm text-blue-800">
@@ -565,21 +608,27 @@ const IOffer = () => {
                   For full-resolution storage, upgrade to Firebase Blaze plan.
                 </p>
               </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                <p className="text-sm text-green-800">
+                  💡 <strong>Tip:</strong> Select multiple photos at once using <kbd className="px-1.5 py-0.5 bg-white border border-green-300 rounded text-xs font-mono">Ctrl+Click</kbd> (Windows) 
+                  or <kbd className="px-1.5 py-0.5 bg-white border border-green-300 rounded text-xs font-mono">Cmd+Click</kbd> (Mac) when choosing files!
+                </p>
+              </div>
               <div className="space-y-3">
                 <input
                   type="file"
-                  id="image"
-                  name="image"
                   accept="image/*"
+                  multiple={true}
                   onChange={handleImageSelect}
                   ref={fileInputRef}
                   className="hidden"
+                  aria-label="Upload multiple photos"
                 />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingImage}
-                  className="flex items-center justify-center w-full px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={uploadingImage || selectedImages.length >= MAX_IMAGES}
+                  className="flex flex-col items-center justify-center w-full px-4 py-3 border-2 border-dashed border-blue-300 rounded-lg hover:bg-blue-50 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {uploadingImage ? (
                     <>
@@ -591,39 +640,76 @@ const IOffer = () => {
                     </>
                   ) : (
                     <>
-                      <svg className="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      Choose Photo
+                      <div className="flex items-center mb-1">
+                        <svg className="w-6 h-6 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="font-semibold text-blue-600">
+                          {selectedImages.length === 0 ? 'Select Multiple Photos' : `Add More (${selectedImages.length}/${MAX_IMAGES})`}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {selectedImages.length === 0 ? 'Click to select up to 5 photos' : `${MAX_IMAGES - selectedImages.length} remaining`}
+                      </span>
                     </>
                   )}
                 </button>
                 
-                {imagePreview && (
-                  <div className="relative">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-48 object-cover rounded-lg border border-gray-200"
-                    />
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
+                {/* Helper text for multiple selection */}
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  💡 Tip: Hold <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Ctrl</kbd> (Windows/Linux) or <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Cmd</kbd> (Mac) to select multiple photos at once
+                </p>
                 
-                {selectedImage && imageData && (
-                  <div className="bg-green-50 border border-green-200 rounded p-2">
-                    <p className="text-sm text-green-800">
-                      ✅ <strong>{selectedImage.name}</strong><br/>
-                      Original: {Math.round(selectedImage.size / 1024)}KB → Optimized: {Math.round(imageData.size / 1024)}KB
-                    </p>
+                {imagePreviews.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-700">
+                        {imagePreviews.length} {imagePreviews.length === 1 ? 'Photo' : 'Photos'} Selected
+                      </p>
+                      {imagePreviews.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={removeAllImages}
+                          className="text-sm text-red-600 hover:text-red-800"
+                        >
+                          Remove All
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                          <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white text-xs px-1.5 py-0.5 rounded">
+                            {index + 1}/{imagePreviews.length}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {selectedImages.length > 0 && imagesData.length > 0 && (
+                      <div className="bg-green-50 border border-green-200 rounded p-2">
+                        <p className="text-sm text-green-800">
+                          ✅ <strong>{selectedImages.length} {selectedImages.length === 1 ? 'photo' : 'photos'} optimized</strong><br/>
+                          Total: {Math.round(selectedImages.reduce((sum, img) => sum + img.size, 0) / 1024)}KB → 
+                          {Math.round(imagesData.reduce((sum, img) => sum + img.size, 0) / 1024)}KB
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

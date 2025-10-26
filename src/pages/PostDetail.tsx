@@ -18,15 +18,26 @@ const PostDetail = () => {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{id: string, username: string} | null>(null);
   const [isImageFullscreen, setIsImageFullscreen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const handleImageDoubleClick = () => {
-    console.log('Image double-clicked, opening fullscreen...');
+  const handleImageDoubleClick = (index: number = 0) => {
+    console.log('Image double-clicked, opening fullscreen...', index);
+    setCurrentImageIndex(index);
     setIsImageFullscreen(true);
   };
 
   const handleCloseFullscreen = () => {
     console.log('Closing fullscreen image...');
     setIsImageFullscreen(false);
+    setCurrentImageIndex(0);
+  };
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex(prev => Math.max(0, prev - 1));
+  };
+
+  const handleNextImage = (maxIndex: number) => {
+    setCurrentImageIndex(prev => Math.min(maxIndex, prev + 1));
   };
 
   // Handle ESC key to close fullscreen
@@ -296,6 +307,44 @@ const PostDetail = () => {
                   )}
                 </div>
               </div>
+            ) : (post.images && post.images.length > 0) ? (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                  {post.images.length > 1 ? `Photos (${post.images.length})` : 'Photo'}
+                </h3>
+                <div className={`grid gap-2 ${post.images.length === 1 ? 'grid-cols-1' : post.images.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                  {post.images.map((image, index) => (
+                    <div key={index} className="relative group rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                      <img
+                        src={image.base64}
+                        alt={`Photo ${index + 1}`}
+                        className="w-full h-48 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105 select-none"
+                        onDoubleClick={() => handleImageDoubleClick(index)}
+                        onClick={() => console.log(`Image ${index + 1} clicked`)}
+                        onError={(e) => {
+                          console.error(`Image ${index + 1} failed to load`);
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      {/* Hover overlay */}
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center pointer-events-none">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white bg-opacity-90 px-3 py-1 rounded-full text-sm text-gray-700">
+                          Double-click to enlarge
+                        </div>
+                      </div>
+                      {/* Image number badge */}
+                      {post.images && post.images.length > 1 && (
+                        <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
+                          {index + 1}/{post.images.length}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  📱 Optimized for free plan • Total: {Math.round(post.images.reduce((sum, img) => sum + img.size, 0) / 1024)}KB
+                </p>
+              </div>
             ) : (post.imageUrl || post.imageData) && (
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Photo</h3>
@@ -312,7 +361,7 @@ const PostDetail = () => {
                     src={post.imageData?.base64 || post.imageUrl}
                     alt="Post image"
                     className="w-full h-auto max-h-96 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105 select-none"
-                    onDoubleClick={handleImageDoubleClick}
+                    onDoubleClick={() => handleImageDoubleClick(0)}
                     onClick={() => console.log('Image clicked (single)')}
                     onError={(e) => {
                       console.error('Image failed to load:', {
@@ -347,30 +396,71 @@ const PostDetail = () => {
             )}
 
             {/* Fullscreen Image Modal */}
-            {isImageFullscreen && (post.imageUrl || post.imageData) && (
+            {isImageFullscreen && (post.images || post.imageUrl || post.imageData) && (
               <div 
                 className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
                 onClick={handleCloseFullscreen}
               >
                 <div className="relative max-w-full max-h-full">
+                  {/* Gallery navigation buttons */}
+                  {post.images && post.images.length > 1 && (
+                    <>
+                      {currentImageIndex > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePrevImage();
+                          }}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-3xl font-bold hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center z-10"
+                        >
+                          ‹
+                        </button>
+                      )}
+                      {currentImageIndex < post.images.length - 1 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNextImage(post.images!.length - 1);
+                          }}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-3xl font-bold hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center z-10"
+                        >
+                          ›
+                        </button>
+                      )}
+                      {/* Image counter */}
+                      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-full text-sm z-10">
+                        {currentImageIndex + 1} / {post.images.length}
+                      </div>
+                    </>
+                  )}
+                  
                   <img
-                    src={post.imageData?.base64 || post.imageUrl}
-                    alt="Post image - Full size"
+                    src={
+                      post.images && post.images[currentImageIndex] 
+                        ? post.images[currentImageIndex].base64 
+                        : post.imageData?.base64 || post.imageUrl
+                    }
+                    alt={`Photo ${currentImageIndex + 1} - Full size`}
                     className="max-w-full max-h-full object-contain"
                     onClick={(e) => e.stopPropagation()}
                   />
+                  
                   {/* Close button */}
                   <button
                     onClick={handleCloseFullscreen}
-                    className="absolute top-4 right-4 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-70 transition-colors"
+                    className="absolute top-4 right-4 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-70 transition-colors z-10"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
+                  
                   {/* Instructions */}
                   <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
-                    Click anywhere to close • ESC key
+                    {post.images && post.images.length > 1 
+                      ? 'Click arrows to navigate • ESC or click to close'
+                      : 'Click anywhere to close • ESC key'
+                    }
                   </div>
                 </div>
               </div>

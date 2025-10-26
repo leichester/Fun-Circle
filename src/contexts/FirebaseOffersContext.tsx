@@ -54,7 +54,8 @@ export interface Offer {
   userEmail: string;
   userDisplayName?: string;
   imageUrl?: string; // Legacy field for Firebase Storage (keep for compatibility)
-  imageData?: ImageData; // New field for base64 storage
+  imageData?: ImageData; // New field for base64 storage (single image - legacy)
+  images?: ImageData[]; // Multiple images support (new)
   imageExpired?: boolean; // Flag for expired images
   imageExpiredAt?: Date; // When image was removed
   imageExpiredReason?: string; // Reason for removal
@@ -150,6 +151,7 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
           // Image fields
           imageUrl: data.imageUrl,
           imageData: data.imageData,
+          images: data.images, // Multiple images support
           imageExpired: data.imageExpired || false,
           imageExpiredAt: data.imageExpiredAt ? data.imageExpiredAt.toDate() : undefined,
           imageExpiredReason: data.imageExpiredReason,
@@ -280,6 +282,11 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
             return value !== undefined && value !== null && value !== '';
           }
           
+          // Special handling for arrays (like images) - keep if array exists and has items
+          if (Array.isArray(value)) {
+            return value.length > 0;
+          }
+          
           // For other optional fields, filter out undefined and empty strings
           return value !== undefined && value !== '';
         })
@@ -317,6 +324,11 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
           const dateTimeFields = ['dateTime', 'endDateTime'];
           if (dateTimeFields.includes(key)) {
             return value !== undefined && value !== null && value !== '';
+          }
+          
+          // Special handling for arrays (like images) - keep if array exists and has items
+          if (Array.isArray(value)) {
+            return value.length > 0;
           }
           
           // For other optional fields, filter out undefined and empty strings

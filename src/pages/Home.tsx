@@ -834,12 +834,92 @@ const Home = () => {
                             <span className="text-sm text-gray-600">📷 Image expired</span>
                           </div>
                         </div>
+                      ) : (offer.images && offer.images.length > 0) ? (
+                        <div className="mb-3">
+                          <div className="flex gap-2 flex-wrap">
+                            {offer.images.slice(0, 3).map((image, index) => (
+                              <div key={index} className="relative flex-shrink-0" style={{ width: (offer.images && offer.images.length === 1) ? '100%' : 'auto' }}>
+                                <img
+                                  src={image.base64}
+                                  alt={`${offer.title} - Image ${index + 1}`}
+                                  className="max-h-32 object-contain object-left rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                                  style={{ width: (offer.images && offer.images.length === 1) ? '100%' : 'auto' }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    // Create modal overlay with gallery navigation
+                                    let currentIndex = index;
+                                    const modal = document.createElement('div');
+                                    modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4';
+                                    
+                                    const updateImage = () => {
+                                      const img = modal.querySelector('img');
+                                      if (img && offer.images) {
+                                        img.src = offer.images[currentIndex].base64;
+                                      }
+                                      const counter = modal.querySelector('.image-counter');
+                                      if (counter && offer.images) {
+                                        counter.textContent = `${currentIndex + 1} / ${offer.images.length}`;
+                                      }
+                                      // Update button visibility
+                                      const prevBtn = modal.querySelector('.prev-btn') as HTMLElement;
+                                      const nextBtn = modal.querySelector('.next-btn') as HTMLElement;
+                                      if (prevBtn) prevBtn.style.display = currentIndex === 0 ? 'none' : 'flex';
+                                      if (nextBtn && offer.images) nextBtn.style.display = currentIndex === offer.images.length - 1 ? 'none' : 'flex';
+                                    };
+                                    
+                                    modal.innerHTML = `
+                                      <button class="absolute top-4 right-4 text-white text-4xl font-bold hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-12 h-12 flex items-center justify-center close-btn">×</button>
+                                      ${offer.images && offer.images.length > 1 ? `
+                                        <button class="prev-btn absolute left-4 top-1/2 -translate-y-1/2 text-white text-2xl font-bold hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-10 h-10 items-center justify-center" style="display: ${currentIndex === 0 ? 'none' : 'flex'}">‹</button>
+                                        <button class="next-btn absolute right-4 top-1/2 -translate-y-1/2 text-white text-2xl font-bold hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-10 h-10 items-center justify-center" style="display: ${currentIndex === offer.images.length - 1 ? 'none' : 'flex'}">›</button>
+                                        <div class="image-counter absolute bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-full text-sm">${currentIndex + 1} / ${offer.images.length}</div>
+                                      ` : ''}
+                                      <img src="${offer.images ? offer.images[currentIndex].base64 : ''}" class="max-w-full max-h-full object-contain rounded-lg" onclick="event.stopPropagation()"/>
+                                    `;
+                                    
+                                    modal.onclick = () => modal.remove();
+                                    modal.querySelector('.close-btn')?.addEventListener('click', () => modal.remove());
+                                    modal.querySelector('.prev-btn')?.addEventListener('click', (e) => {
+                                      e.stopPropagation();
+                                      if (currentIndex > 0) {
+                                        currentIndex--;
+                                        updateImage();
+                                      }
+                                    });
+                                    modal.querySelector('.next-btn')?.addEventListener('click', (e) => {
+                                      e.stopPropagation();
+                                      if (offer.images && currentIndex < offer.images.length - 1) {
+                                        currentIndex++;
+                                        updateImage();
+                                      }
+                                    });
+                                    
+                                    document.body.appendChild(modal);
+                                  }}
+                                />
+                                {index === 2 && offer.images && offer.images.length > 3 && (
+                                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                                    +{offer.images.length - 3}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {offer.images.length > 1 && (
+                            <p className="text-xs text-gray-500 mt-1">{offer.images.length} photos</p>
+                          )}
+                        </div>
                       ) : (offer.imageUrl || offer.imageData) && (
                         <div className="mb-3">
                           <img
                             src={offer.imageData ? offer.imageData.base64 : offer.imageUrl}
                             alt={offer.title}
-                            className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                            className="max-w-full max-h-32 object-contain object-left rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
                             onError={(e) => {
                               // Hide broken images gracefully
                               const target = e.target as HTMLImageElement;
