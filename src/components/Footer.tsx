@@ -91,13 +91,13 @@ const Footer = () => {
               to="/i-offer"
               className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
             >
-              Host an Event
+              Host Event
             </Link>
             <Link
               to="/i-need"
               className="bg-white text-blue-800 px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
             >
-              Find Events
+              Request Event
             </Link>
           </div>
         </div>
