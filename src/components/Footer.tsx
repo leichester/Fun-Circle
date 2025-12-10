@@ -4,17 +4,6 @@ import logoSvg from '../logo.svg';
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
-  const serviceCategories = [
-    { name: 'Tutoring', path: '/services/tutoring' },
-    { name: 'Handyman', path: '/services/handyman' },
-    { name: 'Tech Support', path: '/services/tech-support' },
-    { name: 'Cleaning', path: '/services/cleaning' },
-    { name: 'Gardening', path: '/services/gardening' },
-    { name: 'Childcare', path: '/services/childcare' },
-    { name: 'Pet Care', path: '/services/petcare' },
-    { name: 'Fitness', path: '/services/fitness' }
-  ];
-
   const resourceLinks = [
     { name: 'Community Blog', path: '/blog' },
     { name: 'Safety Tips', path: '/blog/safety-tips-community-service-exchanges' },
@@ -35,7 +24,7 @@ const Footer = () => {
     <footer className="bg-gray-900 text-white">
       {/* Main Footer Content */}
       <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="grid md:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-3 gap-8">
           {/* Company Info */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 mb-6">
@@ -43,8 +32,8 @@ const Footer = () => {
               <span className="text-2xl font-bold">Fun Circle</span>
             </div>
             <p className="text-gray-300 mb-6 leading-relaxed">
-              Connect with your local community. Find trusted services, offer your skills, 
-              and build meaningful relationships with neighbors who care.
+              Connect with your local community through events and activities.
+              Host events, join activities, and build meaningful relationships with neighbors.
             </p>
             <div className="space-y-2">
               <p className="text-gray-400 text-sm">
@@ -54,23 +43,6 @@ const Footer = () => {
                 📱 Available 24/7 for community support
               </p>
             </div>
-          </div>
-
-          {/* Service Categories */}
-          <div>
-            <h3 className="text-lg font-semibold mb-6">Popular Services</h3>
-            <ul className="space-y-3">
-              {serviceCategories.map((service) => (
-                <li key={service.path}>
-                  <Link
-                    to={service.path}
-                    className="text-gray-300 hover:text-blue-400 transition-colors text-sm"
-                  >
-                    {service.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </div>
 
           {/* Resources */}
@@ -112,20 +84,20 @@ const Footer = () => {
         <div className="mt-12 p-8 bg-gradient-to-r from-blue-800 to-purple-800 rounded-xl text-center">
           <h3 className="text-2xl font-bold mb-4">Ready to Connect with Your Community?</h3>
           <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-            Join thousands of neighbors who are already helping each other and building stronger communities.
+            Join thousands of neighbors discovering events and activities in their community.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               to="/i-offer"
               className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
             >
-              Start Offering Services
+              Host an Event
             </Link>
             <Link
               to="/i-need"
               className="bg-white text-blue-800 px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
             >
-              Find Services
+              Find Events
             </Link>
           </div>
         </div>
