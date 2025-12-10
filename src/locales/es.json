@@ -3,8 +3,8 @@
   "language": "Idioma",
   "navigation": {
     "home": "Inicio",
-    "iOffer": "OFREZCO",
-    "iNeed": "NECESITO",
+    "iOffer": "ORGANIZAR EVENTO",
+    "iNeed": "SOLICITAR EVENTO",
     "sampleEvent": "Registro de Usuario"
   },
   "content": {
@@ -20,8 +20,8 @@
   "offers": {
     "online": "En línea",
     "new": "Nuevo",
-    "iOfferLabel": "[OFREZCO]",
-    "iNeedLabel": "[NECESITO]"
+    "iOfferLabel": "[ORGANIZAR EVENTO]",
+    "iNeedLabel": "[SOLICITAR EVENTO]"
   },
   "iOffer": {
     "title": "Crear una Oferta",

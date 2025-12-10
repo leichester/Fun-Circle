@@ -1,22 +1,24 @@
+# Robots.txt for Fun Circle - Community Service Exchange Platform
+# Last updated: 2025-11-26
+
 User-agent: *
 Allow: /
 
-# Sitemaps
-Sitemap: https://fun-circle.com/sitemap.xml
+# Sitemap location
+Sitemap: https://funcircle.net/sitemap.xml
 
-# Disallow admin and private areas
-Disallow: /admin/
-Disallow: /api/
-Disallow: /private/
+# Block admin and private areas
+Disallow: /admin
+Disallow: /profile
+Disallow: /cookie-settings
 
-# Allow search engines to crawl important directories
-Allow: /services/
-Allow: /posts/
-Allow: /users/
+# Allow search engines to crawl public content
+Allow: /ioffer
+Allow: /ineed
+Allow: /about
+Allow: /login
+Allow: /signup
+Allow: /post/
 
-# Crawl-delay for respectful crawling
+# Crawl-delay for respectful crawling (1 second between requests)
 Crawl-delay: 1
-
-# Block specific bot if needed (example)
-# User-agent: BadBot
-# Disallow: /

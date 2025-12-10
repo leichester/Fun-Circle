@@ -3,8 +3,8 @@
   "language": "Langue",
   "navigation": {
     "home": "Accueil",
-    "iOffer": "J'OFFRE",
-    "iNeed": "J'AI BESOIN",
+    "iOffer": "ORGANISER ÉVÉNEMENT",
+    "iNeed": "DEMANDER ÉVÉNEMENT",
     "sampleEvent": "Inscription Utilisateur"
   },
   "content": {
@@ -20,8 +20,8 @@
   "offers": {
     "online": "En ligne",
     "new": "Nouveau",
-    "iOfferLabel": "[J'OFFRE]",
-    "iNeedLabel": "[J'AI BESOIN]"
+    "iOfferLabel": "[ORGANISER ÉVÉNEMENT]",
+    "iNeedLabel": "[DEMANDER ÉVÉNEMENT]"
   },
   "iOffer": {
     "title": "Créer une Offre",

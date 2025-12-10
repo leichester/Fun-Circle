@@ -36,6 +36,7 @@ const Home = () => {
 
   // State for filters
   const [filterType, setFilterType] = useState<'all' | 'offer' | 'need'>('all');
+  const [filterEventType, setFilterEventType] = useState('all');
   const [filterDate, setFilterDate] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [filterLocation, setFilterLocation] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired' | 'soon' | 'ongoing' | 'completed'>('all');
@@ -47,8 +48,14 @@ const Home = () => {
 
   // Function to determine post status
   const getPostStatus = (post: any) => {
-    if (!post.dateTime) {
+    // Pinned posts are always Active
+    if (post.isPinned) {
       return { text: 'Active', color: 'bg-green-100 text-green-800' };
+    }
+
+    // All posts must have a start date
+    if (!post.dateTime) {
+      return { text: 'Invalid', color: 'bg-red-100 text-red-800' };
     }
 
     const postDateTime = new Date(post.dateTime);
@@ -161,6 +168,11 @@ const Home = () => {
     if (filterType !== 'all') {
       if (filterType === 'offer' && offer.type !== 'offer') return false;
       if (filterType === 'need' && offer.type !== 'need') return false;
+    }
+    
+    // Event Type filter
+    if (filterEventType !== 'all') {
+      if (offer.eventType !== filterEventType) return false;
     }
     
     // Date filter
@@ -609,7 +621,7 @@ const Home = () => {
               </div>
 
               {/* Filters Container */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4 w-full">
                 {/* Type Filter */}
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-gray-600">Category</label>
@@ -622,8 +634,36 @@ const Home = () => {
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
                   >
                     <option value="all">All Posts</option>
-                    <option value="offer">I OFFER</option>
-                    <option value="need">I NEED</option>
+                    <option value="offer">HOST EVENT</option>
+                    <option value="need">REQUEST EVENT</option>
+                  </select>
+                </div>
+
+                {/* Event Type Filter */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-600">Event Type</label>
+                  <select
+                    value={filterEventType}
+                    onChange={(e) => {
+                      setFilterEventType(e.target.value);
+                      handleFilterChange();
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="sports">⚽ Sports & Fitness</option>
+                    <option value="social">🎉 Social & Networking</option>
+                    <option value="music">🎵 Music & Entertainment</option>
+                    <option value="food">🍽️ Food & Dining</option>
+                    <option value="education">📚 Education & Learning</option>
+                    <option value="arts">🎨 Arts & Culture</option>
+                    <option value="outdoor">🏕️ Outdoor & Adventure</option>
+                    <option value="games">🎮 Gaming & Hobbies</option>
+                    <option value="wellness">🧘 Health & Wellness</option>
+                    <option value="community">🤝 Community Service</option>
+                    <option value="kids">👶 Kids & Family</option>
+                    <option value="professional">💼 Professional & Business</option>
+                    <option value="other">🔧 Other</option>
                   </select>
                 </div>
 
@@ -723,6 +763,7 @@ const Home = () => {
                 <button
                   onClick={() => {
                     setFilterType('all');
+                    setFilterEventType('all');
                     setFilterDate('all');
                     setFilterLocation('');
                     setFilterStatus('all');
@@ -1421,105 +1462,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* Footer Section */}
-      <footer className="bg-black border-t border-gray-700 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* About Section */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">{t('footer.about.title')}</h3>
-              <p className="text-gray-300 text-sm leading-relaxed">
-                {t('footer.about.description')}
-              </p>
-            </div>
-
-            {/* Quick Links */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">{t('footer.quickLinks.title')}</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a href="/about" className="text-gray-300 hover:text-blue-400 text-sm transition-colors">
-                    {t('footer.quickLinks.aboutUs')}
-                  </a>
-                </li>
-                <li>
-                  <a href="/contact" className="text-gray-300 hover:text-blue-400 text-sm transition-colors">
-                    {t('footer.quickLinks.contactUs')}
-                  </a>
-                </li>
-                <li>
-                  <a href="/community-guidelines" className="text-gray-300 hover:text-blue-400 text-sm transition-colors">
-                    {t('footer.quickLinks.communityGuidelines')}
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Legal */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">{t('footer.legal.title')}</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a href="/terms-of-service" className="text-gray-300 hover:text-blue-400 text-sm transition-colors">
-                    {t('footer.legal.termsOfService')}
-                  </a>
-                </li>
-                <li>
-                  <a href="/privacy-policy" className="text-gray-300 hover:text-blue-400 text-sm transition-colors">
-                    {t('footer.legal.privacyPolicy')}
-                  </a>
-                </li>
-                <li>
-                  <a href="/cookie-policy" className="text-gray-300 hover:text-blue-400 text-sm transition-colors">
-                    {t('footer.legal.cookiePolicy')}
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Contact Info */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">{t('footer.contact.title')}</h3>
-              <div className="space-y-2">
-                <p className="text-gray-300 text-sm">
-                  {t('footer.contact.description')}
-                </p>
-                <a 
-                  href="mailto:fun_circle@outlook.com" 
-                  className="text-blue-400 hover:text-blue-300 text-sm transition-colors block"
-                >
-                  fun_circle@outlook.com
-                </a>
-                <div className="flex space-x-4 mt-4">
-                  {/* Social Media Icons (placeholder) */}
-                  <a href="#" className="text-gray-400 hover:text-gray-300 transition-colors">
-                    <span className="sr-only">Facebook</span>
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M20 10C20 4.477 15.523 0 10 0S0 4.477 0 10c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V10h2.54V7.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V10h2.773l-.443 2.89h-2.33v6.988C16.343 19.128 20 14.991 20 10z" clipRule="evenodd" />
-                    </svg>
-                  </a>
-                  <a href="#" className="text-gray-400 hover:text-gray-300 transition-colors">
-                    <span className="sr-only">Twitter</span>
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M6.29 18.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0020 3.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.073 4.073 0 01.8 7.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 010 16.407a11.616 11.616 0 006.29 1.84" />
-                    </svg>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Bar */}
-          <div className="border-t border-gray-700 mt-8 pt-8">
-            <div className="flex flex-col md:flex-row justify-start items-center">
-              <p className="text-gray-400 text-sm">
-                © {new Date().getFullYear()} {t('title')}. {t('footer.copyright')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </footer>
-
       {/* Sticky Mobile CTA Button */}
       <div className="fixed bottom-6 right-6 md:hidden z-50">
         <div className="relative">
@@ -1543,7 +1485,7 @@ const Home = () => {
             showMobileCTA ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
           }`}>
             <div className="flex flex-col gap-3">
-              {/* I OFFER Button */}
+              {/* HOST EVENT Button */}
               <Link
                 to="/i-offer"
                 onClick={() => setShowMobileCTA(false)}
@@ -1552,10 +1494,10 @@ const Home = () => {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                <span className="font-medium">I OFFER</span>
+                <span className="font-medium">HOST EVENT</span>
               </Link>
 
-              {/* I NEED Button */}
+              {/* REQUEST EVENT Button */}
               <Link
                 to="/i-need"
                 onClick={() => setShowMobileCTA(false)}
@@ -1564,7 +1506,7 @@ const Home = () => {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                <span className="font-medium">I NEED</span>
+                <span className="font-medium">REQUEST EVENT</span>
               </Link>
             </div>
           </div>

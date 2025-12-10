@@ -57,9 +57,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, userId?: string) => {
-    console.log('🔥 Firebase Auth: Creating new user...');
+    console.log('🔥 Firebase Auth: Creating new user with email:', email);
     try {
+      console.log('🔥 Firebase Auth: Calling createUserWithEmailAndPassword...');
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      console.log('✅ Firebase Auth: User created:', user.uid);
       
       // Send email verification immediately after account creation
       await sendEmailVerification(user);
@@ -90,8 +92,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('✅ Firebase Auth: User created successfully:', user.email);
     } catch (error: any) {
-      console.error('❌ Firebase Auth: Sign up error:', error);
-      throw new Error(error.message);
+      console.error('❌ Firebase Auth: Sign up error FULL:', JSON.stringify(error, null, 2));
+      console.error('❌ Firebase Auth: Error code:', error.code);
+      console.error('❌ Firebase Auth: Error message:', error.message);
+      console.error('❌ Firebase Auth: Error customData:', error.customData);
+      
+      // Provide more helpful error messages
+      if (error.code === 'auth/operation-not-allowed') {
+        throw new Error('Email/password sign-up is not enabled. Please contact support.');
+      } else if (error.code === 'auth/weak-password') {
+        throw new Error('Password is too weak. Please use at least 6 characters.');
+      } else if (error.code === 'auth/email-already-in-use') {
+        throw new Error('This email is already registered. Please sign in instead.');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Invalid email address format.');
+      } else if (error.code === 'auth/admin-restricted-operation') {
+        throw new Error('This operation requires administrator permissions. Please check Firebase Authentication settings.');
+      }
+      
+      throw new Error(error.message || 'Failed to create account. Please try again.');
     }
   };
 
@@ -259,11 +278,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const resetPassword = async (email: string) => {
     try {
+      console.log('🔑 Firebase Auth: Attempting to send password reset email to:', email);
       await sendPasswordResetEmail(auth, email);
-      console.log('🔑 Firebase Auth: Password reset email sent to:', email);
+      console.log('✅ Firebase Auth: Password reset email sent successfully to:', email);
+      console.log('📧 Check your email inbox and spam folder for the reset link');
     } catch (error: any) {
       console.error('❌ Firebase Auth: Password reset error:', error);
-      throw new Error(error.message);
+      console.error('❌ Firebase Auth: Error code:', error.code);
+      console.error('❌ Firebase Auth: Error message:', error.message);
+      
+      if (error.code === 'auth/user-not-found') {
+        throw new Error('No account found with this email address.');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Invalid email address format.');
+      }
+      
+      throw new Error(error.message || 'Failed to send password reset email. Please try again.');
     }
   };
 

@@ -3,8 +3,8 @@
   "language": "Language",
   "navigation": {
     "home": "Home",
-    "iOffer": "I OFFER",
-    "iNeed": "I NEED",
+    "iOffer": "HOST EVENT",
+    "iNeed": "REQUEST EVENT",
     "sampleEvent": "User Registration"
   },
   "content": {
@@ -20,8 +20,8 @@
   "offers": {
     "online": "Online",
     "new": "New",
-    "iOfferLabel": "[I OFFER]",
-    "iNeedLabel": "[I NEED]"
+    "iOfferLabel": "[HOST EVENT]",
+    "iNeedLabel": "[REQUEST EVENT]"
   },
   "iOffer": {
     "title": "Create an Offer",

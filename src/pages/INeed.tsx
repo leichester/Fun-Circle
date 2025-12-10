@@ -68,6 +68,7 @@ const INeed = () => {
       setFormData({
         title: postToEdit.title || '',
         description: postToEdit.description || '',
+        eventType: postToEdit.eventType || '',
         dateTime: formatDateTimeForInput(postToEdit.dateTime || '') || '',
         endDateTime: formatDateTimeForInput(postToEdit.endDateTime || '') || '',
         price: postToEdit.price || '',
@@ -82,6 +83,7 @@ const INeed = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    eventType: '',
     dateTime: '',
     endDateTime: '',
     price: '',
@@ -228,6 +230,7 @@ const INeed = () => {
       const needData: any = {
         title: formData.title,
         description: formData.description,
+        eventType: formData.eventType,
         online: formData.online,
         type: 'need' as const,
         images: imagesData.length > 0 ? imagesData : undefined // Store multiple images
@@ -337,6 +340,36 @@ const INeed = () => {
                 placeholder={t('iNeed.form.titlePlaceholder')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
+            </div>
+
+            {/* Event Type */}
+            <div>
+              <label htmlFor="eventType" className="block text-sm font-medium text-gray-700 mb-2">
+                Event Type *
+              </label>
+              <select
+                id="eventType"
+                name="eventType"
+                required
+                value={formData.eventType}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
+                <option value="">Select event type...</option>
+                <option value="sports">🏀 Sports & Fitness</option>
+                <option value="social">🎉 Social & Networking</option>
+                <option value="music">🎵 Music & Performance</option>
+                <option value="food">🍕 Food & Dining</option>
+                <option value="education">📚 Education & Learning</option>
+                <option value="arts">🎨 Arts & Crafts</option>
+                <option value="outdoor">🏕️ Outdoor & Adventure</option>
+                <option value="games">🎮 Games & Entertainment</option>
+                <option value="wellness">🧘 Wellness & Mindfulness</option>
+                <option value="community">🤝 Community Service</option>
+                <option value="kids">👶 Kids & Family</option>
+                <option value="professional">💼 Professional & Career</option>
+                <option value="other">📌 Other</option>
+              </select>
             </div>
 
             {/* Description */}
@@ -564,15 +597,16 @@ const INeed = () => {
               </div>
             </div>
 
-            {/* Start Date and Time - Optional */}
+            {/* Start Date and Time */}
             <div>
               <label htmlFor="dateTime" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('iNeed.form.startDateTime')} ({t('iNeed.form.optional')})
+                {t('iNeed.form.startDateTime')} *
               </label>
               <input
                 type="datetime-local"
                 id="dateTime"
                 name="dateTime"
+                required
                 min={getCurrentDateTime()}
                 value={formData.dateTime}
                 onChange={handleInputChange}

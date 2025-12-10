@@ -39,6 +39,12 @@ const UserRegistration = () => {
 
     try {
       if (isSignUp) {
+        console.log('📝 Sign up form submitted with:', { 
+          email: formData.email, 
+          fullName: formData.fullName, 
+          userId: formData.userId 
+        });
+        
         // Validation for sign up
         if (!formData.fullName.trim()) {
           throw new Error('Full name is required');
@@ -60,7 +66,9 @@ const UserRegistration = () => {
           throw new Error('Password must be at least 6 characters');
         }
         
+        console.log('✅ Validation passed, calling signUp...');
         await signUp(formData.email, formData.password, formData.fullName, formData.userId);
+        console.log('✅ Sign up successful, navigating to verify-email...');
         // After signup, redirect to email verification
         navigate('/verify-email');
       } else {
@@ -70,7 +78,24 @@ const UserRegistration = () => {
         navigate('/');
       }
     } catch (error: any) {
-      setError(error.message);
+      console.error('❌ Sign up/Sign in error:', error);
+      // Format Firebase error messages to be more user-friendly
+      let errorMessage = error.message;
+      if (errorMessage.includes('auth/invalid-credential') || errorMessage.includes('invalid-credential')) {
+        errorMessage = 'Invalid username/credential';
+      } else if (errorMessage.includes('auth/user-not-found')) {
+        errorMessage = 'User not found';
+      } else if (errorMessage.includes('auth/wrong-password')) {
+        errorMessage = 'Invalid username/credential';
+      } else if (errorMessage.includes('auth/too-many-requests')) {
+        errorMessage = 'Too many failed attempts. Please try again later';
+      } else if (errorMessage.includes('auth/email-already-in-use')) {
+        errorMessage = 'This email is already registered. Please sign in instead.';
+      } else if (errorMessage.includes('auth/')) {
+        // Remove "Firebase: Error (auth/...)" prefix for other Firebase errors
+        errorMessage = errorMessage.replace(/^Firebase: Error \(auth\/[^)]+\)\.?\s*/, '');
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -84,7 +109,14 @@ const UserRegistration = () => {
       await signInWithGoogle();
       navigate('/');
     } catch (error: any) {
-      setError(error.message);
+      // Format Firebase error messages to be more user-friendly
+      let errorMessage = error.message;
+      if (errorMessage.includes('auth/popup-closed-by-user')) {
+        errorMessage = 'Sign-in cancelled';
+      } else if (errorMessage.includes('auth/')) {
+        errorMessage = errorMessage.replace(/^Firebase: Error \(auth\/[^)]+\)\.?\s*/, '');
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

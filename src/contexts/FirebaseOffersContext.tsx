@@ -15,7 +15,8 @@ import {
 import { db } from '../lib/firebase';
 import { useAuth } from './FirebaseAuthContext';
 import { ImageData } from '../utils/base64ImageStorage';
-import { scheduleAutomaticCleanup } from '../utils/imageCleanup';
+// Image cleanup disabled for now
+// import { scheduleAutomaticCleanup } from '../utils/imageCleanup';
 
 export interface Reply {
   id: string;
@@ -41,6 +42,7 @@ export interface Offer {
   id: string;
   title: string;
   description: string;
+  eventType?: string;
   dateTime?: string;
   endDateTime?: string;
   price?: string;
@@ -199,20 +201,19 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
   useEffect(() => {
     if (offers.length === 0) return; // Wait for posts to load
     
-    const updatePostFunction = async (postId: string, updateData: any) => {
-      const postRef = doc(db, 'posts', postId);
-      await updateDoc(postRef, {
-        ...updateData,
-        imageExpiredAt: Timestamp.fromDate(updateData.imageExpiredAt)
-      });
-    };
+    // Automatic image cleanup disabled - keeping all images permanently for now
+    // This can be re-enabled later when there are more users
     
-    const getPostsFunction = () => offers;
-    
-    // Start automatic cleanup (runs every 24 hours)
-    const stopCleanup = scheduleAutomaticCleanup(getPostsFunction, updatePostFunction, 24);
-    
-    return stopCleanup; // Cleanup function
+    // const updatePostFunction = async (postId: string, updateData: any) => {
+    //   const postRef = doc(db, 'offers', postId);
+    //   await updateDoc(postRef, {
+    //     ...updateData,
+    //     imageExpiredAt: Timestamp.fromDate(updateData.imageExpiredAt)
+    //   });
+    // };
+    // const getPostsFunction = () => offers;
+    // const stopCleanup = scheduleAutomaticCleanup(getPostsFunction, updatePostFunction, 24);
+    // return stopCleanup;
   }, [offers]);
 
   // Set up replies listener

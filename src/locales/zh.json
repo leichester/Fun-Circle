@@ -9,8 +9,8 @@
   },
   "navigation": {
     "home": "首页",
-    "iOffer": "我提供",
-    "iNeed": "我需要",
+    "iOffer": "举办活动",
+    "iNeed": "请求活动",
     "sampleEvent": "用户注册"
   },
   "content": {
@@ -20,8 +20,8 @@
   "offers": {
     "online": "在线",
     "new": "新",
-    "iOfferLabel": "[我提供]",
-    "iNeedLabel": "[我需要]"
+    "iOfferLabel": "[举办活动]",
+    "iNeedLabel": "[请求活动]"
   },
   "iOffer": {
     "title": "创建服务",

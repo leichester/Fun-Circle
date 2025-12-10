@@ -11,9 +11,14 @@ export interface CleanupStats {
 }
 
 export const isPostExpired = (post: any): boolean => {
-  // Use same logic as getPostStatus function for consistency
+  // Pinned posts never expire
+  if (post.isPinned) {
+    return false;
+  }
+
+  // All posts must have a start date - invalid posts are considered expired
   if (!post.dateTime) {
-    return false; // Posts without dateTime are considered active (never expire)
+    return true;
   }
 
   const postDateTime = new Date(post.dateTime);
