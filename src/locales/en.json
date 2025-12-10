@@ -24,7 +24,7 @@
     "iNeedLabel": "[REQUEST EVENT]"
   },
   "iOffer": {
-    "title": "Create an Offer",
+    "title": "Create an Event",
     "subtitle": "Share what you can offer to the community",
     "form": {
       "title": "Title",
@@ -38,7 +38,7 @@
       "price": "Price",
       "pricePlaceholder": "Enter price (e.g., $50 or Free)",
       "online": "Online",
-      "onlineLabel": "This is an online offer (virtual/remote)",
+      "onlineLabel": "This is an online event (virtual/remote)",
       "location": "Location",
       "locationPlaceholder": "Enter specific location or address",
       "city": "City",

@@ -38,7 +38,7 @@
       "price": "Precio",
       "pricePlaceholder": "Ingresa el precio (ej: $50 o Gratis)",
       "online": "En línea",
-      "onlineLabel": "Esta es una oferta en línea (virtual/remota)",
+      "onlineLabel": "Este es un evento en línea (virtual/remoto)",
       "location": "Ubicación",
       "locationPlaceholder": "Ingresa la ubicación específica o dirección",
       "city": "Ciudad",

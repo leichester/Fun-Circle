@@ -38,7 +38,7 @@
       "price": "Prix",
       "pricePlaceholder": "Entrez le prix (ex: 50€ ou Gratuit)",
       "online": "En ligne",
-      "onlineLabel": "Ceci est une offre en ligne (virtuelle/à distance)",
+      "onlineLabel": "Ceci est un événement en ligne (virtuel/à distance)",
       "location": "Lieu",
       "locationPlaceholder": "Entrez l'adresse de la rue",
       "city": "Ville",
