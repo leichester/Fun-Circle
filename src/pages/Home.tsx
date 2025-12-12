@@ -557,241 +557,283 @@ const Home = () => {
         <div className="w-full max-w-6xl mt-6">
           {/* Filter Bar */}
           <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 md:p-6 mb-8">
-            <div className="flex flex-col gap-4">
-              {/* Filter Section Label */}
-              <div className="flex items-center gap-2 text-gray-700 font-medium">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
-                </svg>
-                <span>Search & Filters:</span>
-              </div>
-
-              {/* Search Bar */}
-              <div className="w-full mb-4">
+            {/* Airbnb/Eventbrite Style Filter Bar */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
+              {/* Search Bar - Full Width */}
+              <div className="mb-5">
                 <div className="relative">
-                  <div className="flex items-center">
-                    <div className="relative w-full">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                      </div>
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => handleSearchChange(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Escape') {
-                            handleSearchChange('');
-                          }
-                        }}
-                        placeholder="Search by title, description, or username..."
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
-                      />
-                      {searchQuery && (
-                        <button
-                          onClick={() => handleSearchChange('')}
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                          title="Clear search"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                   </div>
-                  
-                  {/* Search Results Count and Pagination Info */}
-                  {searchQuery.trim() && (
-                    <div className="absolute top-full left-0 right-0 mt-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 z-10 shadow-sm">
-                      {sortedOffers.length === 0 
-                        ? 'No posts found matching your search'
-                        : `Found ${sortedOffers.length} post${sortedOffers.length !== 1 ? 's' : ''} matching "${searchQuery}"`
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        handleSearchChange('');
                       }
-                      {sortedOffers.length > itemsPerPage && (
-                        <span className="ml-2 text-blue-600">
-                          (Showing page {currentPage} of {totalPages})
-                        </span>
-                      )}
-                      <span className="ml-2 text-blue-500 text-xs">(Press Escape to clear)</span>
-                    </div>
+                    }}
+                    placeholder="Search events by title, description, or organizer..."
+                    className="w-full pl-12 pr-12 py-4 border-2 border-gray-200 rounded-full focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100 bg-white text-base transition-all placeholder-gray-400"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => handleSearchChange('')}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                      title="Clear search"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   )}
                 </div>
+                
+                {/* Search Results Count */}
+                {searchQuery.trim() && (
+                  <div className="mt-3 px-4 py-2 bg-rose-50 border border-rose-100 rounded-xl text-sm text-rose-700">
+                    {sortedOffers.length === 0 
+                      ? '🔍 No events found matching your search'
+                      : `✨ Found ${sortedOffers.length} event${sortedOffers.length !== 1 ? 's' : ''} matching "${searchQuery}"`
+                    }
+                    {sortedOffers.length > itemsPerPage && (
+                      <span className="ml-2 text-rose-600 font-medium">
+                        (Page {currentPage} of {totalPages})
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Filters Container */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4 w-full">
-                {/* Type Filter */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-gray-600">Category</label>
+              {/* Horizontal Filter Bar */}
+              <div className="flex flex-wrap items-center gap-3 pb-5 border-b border-gray-200">
+                {/* Category Filter */}
+                <div className="relative">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Category</label>
                   <select
                     value={filterType}
                     onChange={(e) => {
                       setFilterType(e.target.value as 'all' | 'offer' | 'need');
                       handleFilterChange();
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                    className="appearance-none pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-full focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 transition-all cursor-pointer min-w-[140px]"
                   >
-                    <option value="all">All Posts</option>
-                    <option value="offer">HOST EVENT</option>
-                    <option value="need">REQUEST EVENT</option>
+                    <option value="all">All Events</option>
+                    <option value="offer">🎯 Host Event</option>
+                    <option value="need">🔍 Request Event</option>
                   </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none mt-6">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
 
                 {/* Event Type Filter */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-gray-600">Event Type</label>
+                <div className="relative">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Event Type</label>
                   <select
                     value={filterEventType}
                     onChange={(e) => {
                       setFilterEventType(e.target.value);
                       handleFilterChange();
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                    className="appearance-none pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-full focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 transition-all cursor-pointer min-w-[180px]"
                   >
                     <option value="all">All Types</option>
-                    <option value="sports">⚽ Sports & Fitness</option>
-                    <option value="social">🎉 Social & Networking</option>
-                    <option value="music">🎵 Music & Entertainment</option>
-                    <option value="food">🍽️ Food & Dining</option>
-                    <option value="education">📚 Education & Learning</option>
-                    <option value="arts">🎨 Arts & Culture</option>
-                    <option value="outdoor">🏕️ Outdoor & Adventure</option>
-                    <option value="games">🎮 Gaming & Hobbies</option>
-                    <option value="wellness">🧘 Health & Wellness</option>
-                    <option value="community">🤝 Community Service</option>
-                    <option value="kids">👶 Kids & Family</option>
-                    <option value="professional">💼 Professional & Business</option>
+                    <option value="sports">⚽ Sports</option>
+                    <option value="social">🎉 Social</option>
+                    <option value="music">🎵 Music</option>
+                    <option value="food">🍽️ Food</option>
+                    <option value="education">📚 Education</option>
+                    <option value="arts">🎨 Arts</option>
+                    <option value="outdoor">🏕️ Outdoor</option>
+                    <option value="games">🎮 Gaming</option>
+                    <option value="wellness">🧘 Wellness</option>
+                    <option value="community">🤝 Community</option>
+                    <option value="kids">👶 Kids</option>
+                    <option value="professional">💼 Professional</option>
                     <option value="other">🔧 Other</option>
                   </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none mt-6">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
 
-                {/* Status Filter */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-gray-600">Status</label>
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => {
-                      setFilterStatus(e.target.value as 'all' | 'active' | 'expired' | 'soon' | 'ongoing' | 'completed');
-                      handleFilterChange();
-                    }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="soon">Soon</option>
-                    <option value="ongoing">Ongoing</option>
-                    <option value="completed">Completed</option>
-                  </select>
+                {/* Location Filter */}
+                <div className="relative flex-1 min-w-[200px]">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Location</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={filterLocation}
+                      onChange={(e) => {
+                        setFilterLocation(e.target.value);
+                        handleFilterChange();
+                      }}
+                      placeholder="City or state..."
+                      className="w-full pl-11 pr-4 py-2.5 border-2 border-gray-200 rounded-full focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 transition-all placeholder-gray-400"
+                    />
+                  </div>
                 </div>
 
-                {/* Rating Filter */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-gray-600">Rating</label>
-                  <select
-                    value={filterRating}
-                    onChange={(e) => {
-                      setFilterRating(e.target.value as 'all' | '4+' | '3+' | '2+' | '1+');
-                      handleFilterChange();
-                    }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
-                  >
-                    <option value="all">Any Rating</option>
-                    <option value="4+">⭐ 4+ Stars</option>
-                    <option value="3+">⭐ 3+ Stars</option>
-                    <option value="2+">⭐ 2+ Stars</option>
-                    <option value="1+">⭐ 1+ Stars</option>
-                  </select>
-                </div>
-
-                {/* Date Filter */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-gray-600">Date Posted</label>
+                {/* Date Posted Filter */}
+                <div className="relative">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Date Posted</label>
                   <select
                     value={filterDate}
                     onChange={(e) => {
                       setFilterDate(e.target.value as 'all' | 'today' | 'week' | 'month');
                       handleFilterChange();
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+                    className="appearance-none pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-full focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 transition-all cursor-pointer min-w-[130px]"
                   >
-                    <option value="all">All Time</option>
+                    <option value="all">Any Time</option>
                     <option value="today">Today</option>
                     <option value="week">This Week</option>
                     <option value="month">This Month</option>
                   </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none mt-6">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
 
-                {/* Location Filter */}
-                <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1">
-                  <label className="text-sm font-medium text-gray-600">Location</label>
-                  <input
-                    type="text"
-                    value={filterLocation}
+                {/* Status Filter */}
+                <div className="relative">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Status</label>
+                  <select
+                    value={filterStatus}
                     onChange={(e) => {
-                      setFilterLocation(e.target.value);
+                      setFilterStatus(e.target.value as 'all' | 'active' | 'expired' | 'soon' | 'ongoing' | 'completed');
                       handleFilterChange();
                     }}
-                    placeholder="Filter by city, state..."
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
-                  />
+                    className="appearance-none pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-full focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 transition-all cursor-pointer min-w-[120px]"
+                  >
+                    <option value="all">All</option>
+                    <option value="active">Active</option>
+                    <option value="soon">Soon</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none mt-6">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Rating Filter */}
+                <div className="relative">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Rating</label>
+                  <select
+                    value={filterRating}
+                    onChange={(e) => {
+                      setFilterRating(e.target.value as 'all' | '4+' | '3+' | '2+' | '1+');
+                      handleFilterChange();
+                    }}
+                    className="appearance-none pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-full focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 transition-all cursor-pointer min-w-[110px]"
+                  >
+                    <option value="all">Any</option>
+                    <option value="4+">⭐ 4+</option>
+                    <option value="3+">⭐ 3+</option>
+                    <option value="2+">⭐ 2+</option>
+                    <option value="1+">⭐ 1+</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none mt-6">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
 
-              {/* Sort and Clear Section */}
-              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 items-stretch sm:items-end pt-4 border-t border-gray-200">
+              {/* Bottom Bar: Sort & Apply */}
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-5">
                 {/* Sort By */}
-                <div className="flex flex-col gap-1 flex-1 sm:flex-initial">
-                  <label className="text-sm font-medium text-gray-600">Sort By</label>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-gray-600">Sort by:</span>
                   <select
                     value={sortBy}
                     onChange={(e) => {
                       setSortBy(e.target.value as 'newest' | 'oldest' | 'title' | 'rating');
                       handleFilterChange();
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm w-full sm:min-w-[140px]"
+                    className="appearance-none pl-4 pr-10 py-2 border-2 border-gray-200 rounded-full focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 transition-all cursor-pointer"
                   >
                     <option value="newest">Newest First</option>
                     <option value="oldest">Oldest First</option>
-                    <option value="title">Title A-Z</option>
-                    <option value="rating">Highest Rated</option>
+                    <option value="title">Alphabetical</option>
+                    <option value="rating">Top Rated</option>
                   </select>
                 </div>
 
-                {/* Clear Filters Button */}
-                <button
-                  onClick={() => {
-                    setFilterType('all');
-                    setFilterEventType('all');
-                    setFilterDate('all');
-                    setFilterLocation('');
-                    setFilterStatus('all');
-                    setFilterRating('all');
-                    setSortBy('newest');
-                    setSearchQuery('');
-                    handleFilterChange();
-                  }}
-                  className="px-4 py-2 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-2 w-full sm:w-auto"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Clear All
-                </button>
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3">
+                  {/* Clear Filters */}
+                  <button
+                    onClick={() => {
+                      setFilterType('all');
+                      setFilterEventType('all');
+                      setFilterDate('all');
+                      setFilterLocation('');
+                      setFilterStatus('all');
+                      setFilterRating('all');
+                      setSortBy('newest');
+                      setSearchQuery('');
+                      handleFilterChange();
+                    }}
+                    className="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-800 border-2 border-gray-200 hover:border-gray-300 rounded-full transition-all flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Clear All
+                  </button>
+
+                  {/* Apply Filters Button */}
+                  <button
+                    onClick={() => handleFilterChange()}
+                    className="px-8 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 rounded-full transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+                    </svg>
+                    Apply Filters
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Results Count */}
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-sm text-gray-600">
-                Showing {paginatedOffers.length} of {sortedOffers.length} posts
-                {searchQuery && (
-                  <span className="ml-1">
-                    matching "{searchQuery}"
+            {/* Results Summary Bar */}
+            <div className="bg-gradient-to-r from-gray-50 to-white rounded-xl px-6 py-4 mb-6 border border-gray-100">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-sm font-medium text-gray-700">
+                  Showing <span className="font-bold text-gray-900">{paginatedOffers.length}</span> of <span className="font-bold text-gray-900">{sortedOffers.length}</span> events
+                  {searchQuery && (
+                    <span className="ml-2 text-rose-600">
+                      matching "<span className="font-semibold">{searchQuery}</span>"
+                    </span>
+                  )}
+                </p>
+                {sortedOffers.length > itemsPerPage && (
+                  <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                    Page {currentPage} of {totalPages}
                   </span>
                 )}
-              </p>
+              </div>
             </div>
           </div>
 

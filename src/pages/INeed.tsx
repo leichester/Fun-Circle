@@ -230,7 +230,6 @@ const INeed = () => {
       const needData: any = {
         title: formData.title,
         description: formData.description,
-        eventType: formData.eventType,
         online: formData.online,
         type: 'need' as const,
         images: imagesData.length > 0 ? imagesData : undefined // Store multiple images
