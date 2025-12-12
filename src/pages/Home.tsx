@@ -892,7 +892,7 @@ const Home = () => {
                         
                         {/* Title - Stacked on mobile, same line on tablet+ */}
                         <Link to={`/post/${offer.id}`} className="flex-1">
-                          <h3 className="text-lg md:text-xl font-semibold text-gray-800 hover:text-blue-600 transition-colors cursor-pointer leading-tight">
+                          <h3 className="text-xl md:text-2xl font-bold text-gray-800 hover:text-blue-600 transition-colors cursor-pointer leading-tight">
                             {offer.title}
                           </h3>
                         </Link>
