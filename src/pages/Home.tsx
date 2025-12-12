@@ -860,24 +860,58 @@ const Home = () => {
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
                   }}
                 >
-                  {/* Rating Button - Top Right Corner */}
-                  <button
-                    onClick={() => handleRatePost(offer.id, offer.title, offer.userId)}
-                    className="absolute top-3 right-3 md:top-4 md:right-4 flex items-center gap-1 text-gray-600 hover:text-yellow-600 transition-colors bg-transparent border-none outline-none p-0 m-0"
-                    title={offer.averageRating ? `Current rating: ${offer.averageRating.toFixed(1)} stars` : "Rate this post"}
-                  >
-                    {offer.averageRating && (
-                      <span className="text-xs font-semibold">{offer.averageRating.toFixed(1)}</span>
-                    )}
-                    <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                    {offer.ratingCount && offer.ratingCount > 0 && (
-                      <span className="text-xs font-medium hidden sm:inline">
-                        {offer.ratingCount} {offer.ratingCount === 1 ? 'rating' : 'ratings'}
-                      </span>
-                    )}
-                  </button>
+                  {/* Top Right Actions - Rating & Share */}
+                  <div className="absolute top-3 right-3 md:top-4 md:right-4 flex items-center gap-2">
+                    {/* Share Button */}
+                    <button
+                      onClick={async () => {
+                        const shareUrl = `${window.location.origin}/post/${offer.id}`;
+                        const shareData = {
+                          title: offer.title,
+                          text: `Check out this event: ${offer.title}`,
+                          url: shareUrl
+                        };
+                        
+                        if (navigator.share) {
+                          try {
+                            await navigator.share(shareData);
+                          } catch (err) {
+                            // User cancelled or error occurred
+                          }
+                        } else {
+                          // Fallback: copy to clipboard
+                          navigator.clipboard.writeText(shareUrl);
+                          alert('Link copied to clipboard!');
+                        }
+                      }}
+                      className="flex items-center gap-1 text-gray-600 hover:text-blue-600 transition-colors bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-2 shadow-sm"
+                      title="Share this event"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                    </button>
+                    
+                    {/* Rating Button */}
+                    <button
+                      onClick={() => handleRatePost(offer.id, offer.title, offer.userId)}
+                      className="flex items-center gap-1 text-gray-600 hover:text-yellow-600 transition-colors bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-2 shadow-sm"
+                      title={offer.averageRating ? `Current rating: ${offer.averageRating.toFixed(1)} stars` : "Rate this event"}
+                    >
+                      {offer.averageRating && (
+                        <span className="text-xs font-semibold">{offer.averageRating.toFixed(1)}</span>
+                      )}
+                      <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                      {offer.ratingCount && offer.ratingCount > 0 && (
+                        <span className="text-xs font-medium hidden sm:inline">
+                          ({offer.ratingCount})
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                  
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
@@ -1034,80 +1068,92 @@ const Home = () => {
                         </div>
                       )}
                       
-                      <div className="flex items-center gap-2 mb-3 text-sm text-gray-700">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        <span className="font-medium">
-                          Posted by: 
+                      {/* Metadata Area - Clean Rows */}
+                      <div className="space-y-2 mb-3">
+                        {/* Row 1: Poster Name & Edit/Delete */}
+                        <div className="flex items-center gap-2 text-sm">
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
                           <Link 
                             to={`/user/${offer.userId}`}
-                            className="text-blue-600 hover:text-blue-800 hover:underline ml-1"
+                            className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
                           >
                             {offer.userDisplayName || offer.userEmail || 'Anonymous'}
                           </Link>
-                        </span>
+                          
+                          {/* User's Own Post Edit/Delete Buttons */}
+                          {user && offer.userId === user.uid && (
+                            <div className="ml-auto flex gap-1">
+                              <Link
+                                to={`/${offer.type === 'need' ? 'i-need' : 'i-offer'}?edit=${offer.id}`}
+                                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md transition-colors flex items-center gap-1"
+                                title="Edit your event"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Edit
+                              </Link>
+                              <button
+                                onClick={() => handleDeleteOwnPost(offer.id)}
+                                className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded-md transition-colors flex items-center gap-1"
+                                title="Delete your event"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
                         
-                        {/* User's Own Post Edit/Delete Buttons - Right after "Posted by" */}
-                        {user && offer.userId === user.uid && (
-                          <div className="ml-3 flex gap-1">
-                            <Link
-                              to={`/${offer.type === 'need' ? 'i-need' : 'i-offer'}?edit=${offer.id}`}
-                              className="px-2 py-1 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md transition-colors flex items-center gap-1"
-                              title="Edit your post"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        {/* Row 2: Date/Time & Price */}
+                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                          {offer.dateTime && (
+                            <div className="flex items-center gap-1">
+                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
-                              Edit
-                            </Link>
-                            <button
-                              onClick={() => handleDeleteOwnPost(offer.id)}
-                              className="px-2 py-1 text-xs bg-red-100 text-red-700 hover:bg-red-200 rounded-md transition-colors flex items-center gap-1"
-                              title="Delete your post"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              <span className="font-medium">
+                                {new Date(offer.dateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} 
+                                {' at '}
+                                {new Date(offer.dateTime).toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'})}
+                              </span>
+                            </div>
+                          )}
+                          {offer.price && (
+                            <div className="flex items-center gap-1">
+                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                               </svg>
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                        {offer.dateTime && (
-                          <span className="flex items-center">
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            {new Date(offer.dateTime).toLocaleDateString()} {new Date(offer.dateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                          </span>
-                        )}
-                        {offer.price && (
-                          <span className="flex items-center">
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                            </svg>
-                            {offer.price}
-                          </span>
-                        )}
+                              <span className="font-semibold text-green-700">{offer.price}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Row 3: Location */}
                         {offer.online ? (
-                          <span className="flex items-center text-blue-600">
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-1 text-sm text-blue-600">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
                             </svg>
-                            Online
-                          </span>
+                            <span className="font-medium">Online Event</span>
+                          </div>
                         ) : (offer.location || offer.city || offer.state) && (
-                          <span className="flex items-center">
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
-                            {[offer.location, offer.city, offer.state].filter(Boolean).join(', ')}
-                          </span>
+                            <span className="font-medium">{[offer.location, offer.city, offer.state].filter(Boolean).join(', ')}</span>
+                          </div>
                         )}
-                        {/* Show attendance count to everyone */}
+                      </div>
+                      
+                      {/* Action Buttons Row */}
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
                         {(offer.attendeeCount || 0) > 0 && (
                           <span className="text-xs text-gray-600">
                             {offer.attendeeCount} attending
