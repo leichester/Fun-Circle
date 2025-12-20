@@ -644,19 +644,10 @@ const Home = () => {
                     className="appearance-none pl-4 pr-10 py-2.5 border-2 border-gray-200 rounded-full focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100 bg-white text-sm font-medium text-gray-700 hover:border-gray-300 transition-all cursor-pointer min-w-[180px]"
                   >
                     <option value="all">All Types</option>
-                    <option value="sports">⚽ Sports</option>
-                    <option value="social">🎉 Social</option>
-                    <option value="music">🎵 Music</option>
-                    <option value="food">🍽️ Food</option>
-                    <option value="education">📚 Education</option>
-                    <option value="arts">🎨 Arts</option>
-                    <option value="outdoor">🏕️ Outdoor</option>
-                    <option value="games">🎮 Gaming</option>
-                    <option value="wellness">🧘 Wellness</option>
-                    <option value="community">🤝 Community</option>
-                    <option value="kids">👶 Kids</option>
-                    <option value="professional">💼 Professional</option>
-                    <option value="other">🔧 Other</option>
+                    <option value="kids">👶 Family & Kids</option>
+                    <option value="food">🍕 Food & Drinks</option>
+                    <option value="community">🤝 Culture & Community</option>
+                    <option value="education">📚 Learning & Career</option>
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none mt-6">
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

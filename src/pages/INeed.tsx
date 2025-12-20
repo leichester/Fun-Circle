@@ -355,19 +355,10 @@ const INeed = () => {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
                 <option value="">Select event type...</option>
-                <option value="sports">🏀 Sports & Fitness</option>
-                <option value="social">🎉 Social & Networking</option>
-                <option value="music">🎵 Music & Performance</option>
-                <option value="food">🍕 Food & Dining</option>
-                <option value="education">📚 Education & Learning</option>
-                <option value="arts">🎨 Arts & Crafts</option>
-                <option value="outdoor">🏕️ Outdoor & Adventure</option>
-                <option value="games">🎮 Games & Entertainment</option>
-                <option value="wellness">🧘 Wellness & Mindfulness</option>
-                <option value="community">🤝 Community Service</option>
-                <option value="kids">👶 Kids & Family</option>
-                <option value="professional">💼 Professional & Career</option>
-                <option value="other">📌 Other</option>
+                <option value="kids">👶 Family & Kids</option>
+                <option value="food">🍕 Food & Drinks</option>
+                <option value="community">🤝 Culture & Community</option>
+                <option value="education">📚 Learning & Career</option>
               </select>
             </div>
 
