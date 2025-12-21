@@ -15,6 +15,7 @@ import {
 import { db } from '../lib/firebase';
 import { useAuth } from './FirebaseAuthContext';
 import { ImageData } from '../utils/base64ImageStorage';
+import { scheduleExpiredPostCleanup } from '../utils/expiredPostCleanup';
 // Image cleanup disabled for now
 // import { scheduleAutomaticCleanup } from '../utils/imageCleanup';
 
@@ -215,6 +216,22 @@ export const OffersProvider: React.FC<OffersProviderProps> = ({ children }) => {
     // const stopCleanup = scheduleAutomaticCleanup(getPostsFunction, updatePostFunction, 24);
     // return stopCleanup;
   }, [offers]);
+
+  // Set up automatic expired post cleanup (runs every 24 hours)
+  useEffect(() => {
+    console.log('🧹 Setting up automatic expired post cleanup...');
+    
+    // Schedule cleanup to run every 24 hours
+    const cleanupInterval = scheduleExpiredPostCleanup(24);
+    
+    // Cleanup interval on unmount
+    return () => {
+      if (cleanupInterval) {
+        console.log('🧹 Clearing expired post cleanup interval');
+        clearInterval(cleanupInterval);
+      }
+    };
+  }, []); // Run once on mount
 
   // Set up replies listener
   useEffect(() => {

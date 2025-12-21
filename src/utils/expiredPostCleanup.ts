@@ -28,11 +28,11 @@ export const isPostExpired = (post: any): boolean => {
     // Post is expired if end date is in the past
     return endDateTime < now;
   } else {
-    // No end date - check if it's been more than one month since start date
-    const oneMonthAfterStart = new Date(postDateTime);
-    oneMonthAfterStart.setMonth(oneMonthAfterStart.getMonth() + 1);
+    // No end date - check if it's been more than two weeks since start date
+    const twoWeeksAfterStart = new Date(postDateTime);
+    twoWeeksAfterStart.setDate(twoWeeksAfterStart.getDate() + 14);
     
-    return now > oneMonthAfterStart;
+    return now > twoWeeksAfterStart;
   }
 };
 
